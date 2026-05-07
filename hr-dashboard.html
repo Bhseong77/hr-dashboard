@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ENJET HR Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #0f4c81;
+    --primary-light: #1a6bb5;
+    --accent: #00b4d8;
+    --accent2: #f4a261;
+    --bg: #f0f4f8;
+    --surface: #ffffff;
+    --surface2: #f8fafc;
+    --text: #1a2332;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --sidebar-w: 220px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Pretendard', -apple-system, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; font-size: 14px; }
+
+  /* LOGIN */
+  .login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; width: 100%; background: var(--bg); }
+  .login-card { background: var(--surface); border-radius: 16px; padding: 48px; text-align: center; border: 1px solid var(--border); box-shadow: 0 4px 24px rgba(0,0,0,0.06); max-width: 380px; width: 90%; }
+  .login-logo { font-size: 28px; font-weight: 700; color: var(--primary); letter-spacing: 3px; margin-bottom: 6px; }
+  .login-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 32px; }
+  .btn-login { width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .btn-login:hover { background: var(--primary-light); }
+  .login-note { font-size: 12px; color: var(--text-muted); margin-top: 16px; }
+
+  /* SIDEBAR */
+  .app-shell { display: none; width: 100%; }
+  .app-shell.visible { display: flex; }
+  .sidebar { width: var(--sidebar-w); background: var(--primary); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; }
+  .logo { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .logo-text { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: 2px; }
+  .logo-sub { font-size: 11px; color: rgba(255,255,255,0.5); letter-spacing: 1px; margin-top: 2px; }
+  .nav { padding: 16px 0; flex: 1; }
+  .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: rgba(255,255,255,0.65); cursor: pointer; transition: all 0.2s; font-size: 13px; font-weight: 500; border-left: 3px solid transparent; }
+  .nav-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+  .nav-item.active { background: rgba(255,255,255,0.12); color: #fff; border-left-color: var(--accent); }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+  .user-info { font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .btn-logout { font-size: 11px; color: rgba(255,255,255,0.4); background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; }
+  .btn-logout:hover { color: rgba(255,255,255,0.8); }
+  .sync-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--success); margin-right: 5px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* MAIN */
+  .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 28px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+  .page-title { font-size: 16px; font-weight: 600; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .btn-refresh { display: flex; align-items: center; gap: 6px; padding: 7px 14px; background: var(--primary); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background 0.2s; font-family: inherit; }
+  .btn-refresh:hover { background: var(--primary-light); }
+  .last-updated { font-size: 12px; color: var(--text-muted); }
+  .content { padding: 24px 28px; flex: 1; }
+
+  /* TABS */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* KPI */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .kpi-card { background: var(--surface); border-radius: 12px; padding: 20px; border: 1px solid var(--border); position: relative; overflow: hidden; }
+  .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent); }
+  .kpi-card:nth-child(2)::before { background: var(--primary); }
+  .kpi-card:nth-child(3)::before { background: var(--success); }
+  .kpi-card:nth-child(4)::before { background: var(--accent2); }
+  .kpi-label { font-size: 12px; color: var(--text-muted); font-weight: 500; margin-bottom: 8px; }
+  .kpi-value { font-size: 32px; font-weight: 700; color: var(--text); line-height: 1; }
+  .kpi-unit { font-size: 14px; font-weight: 400; color: var(--text-muted); margin-left: 2px; }
+  .kpi-sub { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+
+  /* CHARTS */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .chart-card { background: var(--surface); border-radius: 12px; padding: 20px; border: 1px solid var(--border); }
+  .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 16px; }
+  .chart-wrap { position: relative; height: 200px; }
+
+  /* TABLE */
+  .table-card { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; margin-bottom: 24px; }
+  .table-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .table-title { font-size: 13px; font-weight: 600; }
+  .search-box { display: flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; }
+  .search-box input { border: none; background: transparent; outline: none; font-size: 13px; width: 180px; color: var(--text); font-family: inherit; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: var(--surface2); padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 10px 14px; font-size: 13px; }
+  .table-wrap { overflow-x: auto; }
+
+  /* BADGES */
+  .badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .badge-green { background: #d1fae5; color: #065f46; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-yellow { background: #fef3c7; color: #92400e; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+  .badge-gray { background: #f1f5f9; color: #475569; }
+  .badge-purple { background: #ede9fe; color: #5b21b6; }
+
+  /* FILTER */
+  .filter-bar { display: flex; gap: 10px; padding: 12px 20px 0; flex-wrap: wrap; }
+  .filter-select { padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 13px; color: var(--text); font-family: inherit; outline: none; cursor: pointer; }
+
+  /* PAGINATION */
+  .pagination { display: flex; justify-content: center; gap: 4px; padding: 16px; border-top: 1px solid var(--border); }
+  .page-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); cursor: pointer; font-size: 13px; transition: all 0.15s; }
+  .page-btn:hover { background: var(--surface2); }
+  .page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  /* STAGE PIPELINE */
+  .stage-pipeline { display: flex; gap: 12px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 4px; }
+  .stage-item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; min-width: 120px; text-align: center; flex-shrink: 0; }
+  .stage-count { font-size: 24px; font-weight: 700; color: var(--primary); }
+  .stage-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+
+  /* ORG */
+  .org-container { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); padding: 32px; overflow: auto; }
+  .org-tree { display: flex; flex-direction: column; align-items: center; }
+  .org-card { background: var(--surface); border: 2px solid var(--border); border-radius: 10px; padding: 10px 16px; min-width: 110px; text-align: center; cursor: default; transition: all 0.2s; }
+  .org-card:hover { border-color: var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-2px); }
+  .org-card.root { background: var(--primary); border-color: var(--primary); color: #fff; min-width: 130px; }
+  .org-card.dept-head { background: #e0f2fe; border-color: var(--accent); }
+  .org-card.team-head { background: #f0fdf4; border-color: var(--success); }
+  .org-name { font-size: 13px; font-weight: 600; }
+  .org-title { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .org-card.root .org-title { color: rgba(255,255,255,0.7); }
+  .org-dept { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+
+  /* LOADING */
+  .loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; color: var(--text-muted); gap: 12px; }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-state { background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 20px; color: #991b1b; font-size: 13px; margin: 20px 0; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">ENJET</div>
+    <div class="login-sub">HR Dashboard · 인사관리 대시보드</div>
+    <button class="btn-login" onclick="login()">
+      <span>🔐</span> Microsoft 계정으로 로그인
+    </button>
+    <div class="login-note">엔젯 Microsoft 365 계정으로 로그인하세요</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app-shell" id="appShell">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-text">ENJET</div>
+      <div class="logo-sub">HR DASHBOARD</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-item active" onclick="showTab('hr', this)"><span class="nav-icon">👥</span> 인원현황</div>
+      <div class="nav-item" onclick="showTab('recruit', this)"><span class="nav-icon">📋</span> 채용현황</div>
+      <div class="nav-item" onclick="showTab('org', this)"><span class="nav-icon">🏢</span> 조직도</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info" id="userInfo"><span class="sync-dot"></span>로딩 중...</div>
+      <button class="btn-logout" onclick="logout()">로그아웃</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="page-title" id="pageTitle">인원현황</div>
+      <div class="topbar-right">
+        <span class="last-updated" id="lastUpdated"></span>
+        <button class="btn-refresh" onclick="loadAll()">↻ 새로고침</button>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- 인원현황 -->
+      <div class="tab-panel active" id="tab-hr">
+        <div id="hr-loading" class="loading-state"><div class="spinner"></div><span>데이터 로딩 중...</span></div>
+        <div id="hr-error" style="display:none"></div>
+        <div id="hr-content" style="display:none">
+          <div class="kpi-grid">
+            <div class="kpi-card"><div class="kpi-label">재직 인원</div><div class="kpi-value" id="kpi-total">-<span class="kpi-unit">명</span></div><div class="kpi-sub" id="kpi-total-sub"></div></div>
+            <div class="kpi-card"><div class="kpi-label">정규직</div><div class="kpi-value" id="kpi-regular">-<span class="kpi-unit">명</span></div><div class="kpi-sub" id="kpi-regular-sub"></div></div>
+            <div class="kpi-card"><div class="kpi-label">이번달 입사예정</div><div class="kpi-value" id="kpi-new">-<span class="kpi-unit">명</span></div><div class="kpi-sub">예정 포함</div></div>
+            <div class="kpi-card"><div class="kpi-label">휴직</div><div class="kpi-value" id="kpi-leave">-<span class="kpi-unit">명</span></div><div class="kpi-sub"></div></div>
+          </div>
+          <div class="charts-row">
+            <div class="chart-card"><div class="chart-title">부서별 인원</div><div class="chart-wrap"><canvas id="deptChart"></canvas></div></div>
+            <div class="chart-card"><div class="chart-title">직급별 분포</div><div class="chart-wrap"><canvas id="rankChart"></canvas></div></div>
+            <div class="chart-card"><div class="chart-title">고용형태</div><div class="chart-wrap"><canvas id="typeChart"></canvas></div></div>
+          </div>
+          <div class="table-card">
+            <div class="table-header">
+              <div class="table-title">전체 직원 목록</div>
+              <div class="search-box"><span>🔍</span><input type="text" id="hrSearch" placeholder="이름, 부서 검색..." oninput="filterHrTable()"></div>
+            </div>
+            <div class="filter-bar">
+              <select class="filter-select" id="deptFilter" onchange="filterHrTable()"><option value="">전체 부서</option></select>
+              <select class="filter-select" id="statusFilter" onchange="filterHrTable()"><option value="">전체 재직상태</option><option>재직</option><option>휴직</option><option>예정</option></select>
+              <select class="filter-select" id="typeFilter" onchange="filterHrTable()"><option value="">전체 고용형태</option><option>정규직</option><option>계약직</option></select>
+            </div>
+            <div class="table-wrap">
+              <table><thead><tr><th>No</th><th>부서</th><th>팀</th><th>직급</th><th>성명</th><th>입사일자</th><th>근무지</th><th>고용형태</th><th>재직상태</th></tr></thead>
+              <tbody id="hrTableBody"></tbody></table>
+            </div>
+            <div class="pagination" id="hrPagination"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 채용현황 -->
+      <div class="tab-panel" id="tab-recruit">
+        <div id="recruit-loading" class="loading-state"><div class="spinner"></div><span>채용 데이터 로딩 중...</span></div>
+        <div id="recruit-error" style="display:none"></div>
+        <div id="recruit-content" style="display:none">
+          <div class="section-title">전형 단계별 현황</div>
+          <div class="stage-pipeline" id="stagePipeline"></div>
+          <div class="charts-row" style="grid-template-columns:1fr 1fr;">
+            <div class="chart-card"><div class="chart-title">포지션별 지원 현황</div><div class="chart-wrap"><canvas id="positionChart"></canvas></div></div>
+            <div class="chart-card"><div class="chart-title">전형 단계 분포</div><div class="chart-wrap"><canvas id="stageChart"></canvas></div></div>
+          </div>
+          <div class="table-card">
+            <div class="table-header">
+              <div class="table-title">지원자 목록</div>
+              <div class="search-box"><span>🔍</span><input type="text" id="recruitSearch" placeholder="이름, 포지션 검색..." oninput="filterRecruitTable()"></div>
+            </div>
+            <div class="filter-bar">
+              <select class="filter-select" id="positionFilter" onchange="filterRecruitTable()"><option value="">전체 포지션</option></select>
+              <select class="filter-select" id="stageFilter" onchange="filterRecruitTable()"><option value="">전체 전형단계</option></select>
+            </div>
+            <div class="table-wrap">
+              <table><thead><tr><th>No</th><th>포지션</th><th>후보자명</th><th>나이</th><th>성별</th><th>경력</th><th>지원일자</th><th>전형단계</th><th>최종근무지</th><th>검토의견</th><th>최종연봉</th><th>희망연봉</th></tr></thead>
+              <tbody id="recruitTableBody"></tbody></table>
+            </div>
+            <div class="pagination" id="recruitPagination"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 조직도 -->
+      <div class="tab-panel" id="tab-org">
+        <div id="org-loading" class="loading-state"><div class="spinner"></div><span>조직도 로딩 중...</span></div>
+        <div id="org-error" style="display:none"></div>
+        <div id="org-content" style="display:none">
+          <div class="org-container"><div class="org-tree" id="orgTree"></div></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+// ===== MSAL CONFIG =====
+const msalConfig = {
+  auth: {
+    clientId: '180c4752-1198-4e5f-9436-1b6a1298f92b',
+    authority: 'https://login.microsoftonline.com/58b310e1-9278-47ab-8e49-792728818c9e',
+    redirectUri: 'https://enjetco.sharepoint.com/sites/06.BackOffice/Shared%20Documents/%F0%9F%91%A5%20%EC%9D%B8%EC%82%AC%C2%B7%EC%B4%9D%EB%AC%B4%C2%B7%EB%B3%B5%EC%A7%80/01.%EC%9D%B8%EC%82%AC/hr-dashboard.html',
+  },
+  cache: { cacheLocation: 'sessionStorage' }
+};
+
+const scopes = ['https://graph.microsoft.com/Sites.Read.All', 'https://graph.microsoft.com/Files.Read.All'];
+const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+const SITE_URL = 'https://enjetco.sharepoint.com/sites/06.BackOffice';
+const HR_LIST = '인사현황DB_최종';
+const RECRUIT_LIST = '인사채용DB_2';
+
+let hrData = [], recruitData = [];
+let hrFiltered = [], recruitFiltered = [];
+let hrPage = 1, recruitPage = 1;
+const PAGE_SIZE = 15;
+let charts = {};
+let _siteId = null;
+
+// ===== INIT =====
+async function init() {
+  await msalInstance.initialize();
+  const resp = await msalInstance.handleRedirectPromise();
+  if (resp) {
+    msalInstance.setActiveAccount(resp.account);
+  }
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) {
+    msalInstance.setActiveAccount(accounts[0]);
+    showApp(accounts[0]);
+    loadAll();
+  } else {
+    document.getElementById('loginScreen').style.display = 'flex';
+  }
+}
+
+async function login() {
+  await msalInstance.loginRedirect({ scopes });
+}
+
+function logout() {
+  msalInstance.logoutRedirect();
+}
+
+function showApp(account) {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appShell').classList.add('visible');
+  document.getElementById('userInfo').innerHTML = `<span class="sync-dot"></span>${account.name || account.username}`;
+}
+
+// ===== TOKEN =====
+async function getToken() {
+  const account = msalInstance.getActiveAccount();
+  const res = await msalInstance.acquireTokenSilent({ scopes, account });
+  return res.accessToken;
+}
+
+// ===== GRAPH =====
+async function getSiteId(token) {
+  if (_siteId) return _siteId;
+  const res = await fetch('https://graph.microsoft.com/v1.0/sites/enjetco.sharepoint.com:/sites/06.BackOffice', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const data = await res.json();
+  if (!data.id) throw new Error('Site 조회 실패: ' + JSON.stringify(data));
+  _siteId = data.id;
+  return _siteId;
+}
+
+async function getListItems(token, listName) {
+  const siteId = await getSiteId(token);
+  let url = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/items?expand=fields&$top=999`;
+  let items = [];
+  while (url) {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`${listName} 조회 실패 (${res.status})`);
+    const data = await res.json();
+    items = items.concat(data.value.map(i => i.fields));
+    url = data['@odata.nextLink'] || null;
+  }
+  return items;
+}
+
+// ===== LOAD =====
+async function loadAll() {
+  document.querySelector('.btn-refresh').textContent = '↻ 로딩 중...';
+  try {
+    const token = await getToken();
+    await Promise.all([loadHR(token), loadRecruit(token)]);
+    const now = new Date();
+    document.getElementById('lastUpdated').textContent =
+      `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')} 업데이트`;
+  } catch(e) {
+    console.error(e);
+  }
+  document.querySelector('.btn-refresh').textContent = '↻ 새로고침';
+}
+
+async function loadHR(token) {
+  try {
+    hrData = await getListItems(token, HR_LIST);
+    renderHR();
+    show('hr');
+  } catch(e) {
+    showError('hr', e.message);
+  }
+}
+
+async function loadRecruit(token) {
+  try {
+    recruitData = await getListItems(token, RECRUIT_LIST);
+    renderRecruit();
+    show('recruit');
+  } catch(e) {
+    showError('recruit', e.message);
+  }
+}
+
+function show(tab) {
+  document.getElementById(`${tab}-loading`).style.display = 'none';
+  document.getElementById(`${tab}-content`).style.display = 'block';
+  if (tab === 'hr') renderOrg();
+}
+
+// ===== HR =====
+function renderHR() {
+  const active = hrData.filter(r => r['재직상태'] !== '퇴직');
+  const working = active.filter(r => r['재직상태'] === '재직');
+  const leave = active.filter(r => r['재직상태'] === '휴직');
+  const planned = active.filter(r => r['재직상태'] === '예정');
+  const regular = active.filter(r => r['고용형태'] === '정규직');
+
+  document.getElementById('kpi-total').innerHTML = `${working.length}<span class="kpi-unit">명</span>`;
+  document.getElementById('kpi-total-sub').textContent = `예정 ${planned.length}명 포함 총 ${active.length}명`;
+  document.getElementById('kpi-regular').innerHTML = `${regular.length}<span class="kpi-unit">명</span>`;
+  document.getElementById('kpi-regular-sub').textContent = `전체의 ${Math.round(regular.length/active.length*100)}%`;
+  document.getElementById('kpi-new').innerHTML = `${planned.length}<span class="kpi-unit">명</span>`;
+  document.getElementById('kpi-leave').innerHTML = `${leave.length}<span class="kpi-unit">명</span>`;
+
+  const deptCount = {};
+  active.forEach(r => { const d = r['부서']||'미분류'; deptCount[d] = (deptCount[d]||0)+1; });
+  renderChart('deptChart','bar',Object.keys(deptCount),Object.values(deptCount),['#0f4c81','#1a6bb5','#00b4d8','#48cae4','#90e0ef','#f4a261','#e76f51','#2a9d8f']);
+
+  const rankOrder = ['대표','부사장','전무','이사','부장','차장','과장','대리','사원'];
+  const rankCount = {};
+  active.forEach(r => { const v=r['직급']||'기타'; rankCount[v]=(rankCount[v]||0)+1; });
+  const sortedRanks = rankOrder.filter(r=>rankCount[r]).concat(Object.keys(rankCount).filter(r=>!rankOrder.includes(r)));
+  renderChart('rankChart','doughnut',sortedRanks,sortedRanks.map(r=>rankCount[r]||0),['#0f4c81','#1a6bb5','#2563eb','#00b4d8','#10b981','#f59e0b','#f4a261','#e76f51','#ef4444']);
+
+  const typeCount = {};
+  active.forEach(r => { const v=r['고용형태']||'기타'; typeCount[v]=(typeCount[v]||0)+1; });
+  renderChart('typeChart','doughnut',Object.keys(typeCount),Object.values(typeCount),['#0f4c81','#00b4d8','#10b981','#f59e0b']);
+
+  const depts = [...new Set(hrData.map(r=>r['부서']).filter(Boolean))].sort();
+  const df = document.getElementById('deptFilter');
+  df.innerHTML = '<option value="">전체 부서</option>';
+  depts.forEach(d => { const o=document.createElement('option'); o.value=d; o.textContent=d; df.appendChild(o); });
+
+  hrFiltered = [...active];
+  hrPage = 1;
+  renderHrTable();
+}
+
+function filterHrTable() {
+  const search = document.getElementById('hrSearch').value.toLowerCase();
+  const dept = document.getElementById('deptFilter').value;
+  const status = document.getElementById('statusFilter').value;
+  const type = document.getElementById('typeFilter').value;
+  const active = hrData.filter(r => r['재직상태'] !== '퇴직');
+  hrFiltered = active.filter(r => {
+    const ms = !search || ['성명','부서','팀'].some(k => (r[k]||'').toLowerCase().includes(search));
+    return ms && (!dept||r['부서']===dept) && (!status||r['재직상태']===status) && (!type||r['고용형태']===type);
+  });
+  hrPage = 1;
+  renderHrTable();
+}
+
+function renderHrTable() {
+  const totalPages = Math.ceil(hrFiltered.length / PAGE_SIZE);
+  const start = (hrPage-1)*PAGE_SIZE;
+  document.getElementById('hrTableBody').innerHTML = hrFiltered.slice(start, start+PAGE_SIZE).map((r,i) => `
+    <tr>
+      <td style="color:var(--text-muted)">${start+i+1}</td>
+      <td>${r['부서']||'-'}</td><td>${r['팀']||'-'}</td><td>${r['직급']||'-'}</td>
+      <td><strong>${r['성명']||'-'}</strong></td>
+      <td>${formatDate(r['입사일자'])}</td><td>${r['근무지']||'-'}</td>
+      <td><span class="badge badge-blue">${r['고용형태']||'-'}</span></td>
+      <td>${statusBadge(r['재직상태'])}</td>
+    </tr>`).join('');
+  renderPagination('hrPagination', hrPage, totalPages, p => { hrPage=p; renderHrTable(); });
+}
+
+// ===== RECRUIT =====
+function renderRecruit() {
+  const stageOrder = ['서류검토','1차면접','2차면접','처우협의','최종합격','보류','탈락'];
+  const stageCounts = {};
+  recruitData.forEach(r => { const s=r['전형단계']||'기타'; stageCounts[s]=(stageCounts[s]||0)+1; });
+
+  document.getElementById('stagePipeline').innerHTML = stageOrder.filter(s=>stageCounts[s]).map(s => `
+    <div class="stage-item"><div class="stage-count">${stageCounts[s]}</div><div class="stage-label">${s}</div></div>`).join('');
+
+  const posCount = {};
+  recruitData.forEach(r => { const v=r['채용공고포지션']||'기타'; posCount[v]=(posCount[v]||0)+1; });
+  renderChart('positionChart','bar',Object.keys(posCount),Object.values(posCount),['#0f4c81','#1a6bb5','#00b4d8','#10b981','#f59e0b','#f4a261']);
+
+  const stageLabels = stageOrder.filter(s=>stageCounts[s]);
+  renderChart('stageChart','doughnut',stageLabels,stageLabels.map(s=>stageCounts[s]),['#0f4c81','#1a6bb5','#00b4d8','#10b981','#f59e0b','#ef4444','#94a3b8']);
+
+  const pf = document.getElementById('positionFilter');
+  pf.innerHTML = '<option value="">전체 포지션</option>';
+  [...new Set(recruitData.map(r=>r['채용공고포지션']).filter(Boolean))].sort().forEach(p => {
+    const o=document.createElement('option'); o.value=p; o.textContent=p; pf.appendChild(o);
+  });
+  const sf = document.getElementById('stageFilter');
+  sf.innerHTML = '<option value="">전체 전형단계</option>';
+  [...new Set(recruitData.map(r=>r['전형단계']).filter(Boolean))].forEach(s => {
+    const o=document.createElement('option'); o.value=s; o.textContent=s; sf.appendChild(o);
+  });
+
+  recruitFiltered = [...recruitData];
+  recruitPage = 1;
+  renderRecruitTable();
+}
+
+function filterRecruitTable() {
+  const search = document.getElementById('recruitSearch').value.toLowerCase();
+  const pos = document.getElementById('positionFilter').value;
+  const stage = document.getElementById('stageFilter').value;
+  recruitFiltered = recruitData.filter(r => {
+    const ms = !search || ['후보자명','채용공고포지션'].some(k=>(r[k]||'').toLowerCase().includes(search));
+    return ms && (!pos||r['채용공고포지션']===pos) && (!stage||r['전형단계']===stage);
+  });
+  recruitPage = 1;
+  renderRecruitTable();
+}
+
+function renderRecruitTable() {
+  const totalPages = Math.ceil(recruitFiltered.length / PAGE_SIZE);
+  const start = (recruitPage-1)*PAGE_SIZE;
+  document.getElementById('recruitTableBody').innerHTML = recruitFiltered.slice(start, start+PAGE_SIZE).map((r,i) => `
+    <tr>
+      <td style="color:var(--text-muted)">${start+i+1}</td>
+      <td><strong>${r['채용공고포지션']||'-'}</strong></td><td>${r['후보자명']||'-'}</td>
+      <td>${r['나이']||'-'}</td><td>${r['성별']||'-'}</td><td>${r['경력']||'-'}</td>
+      <td>${formatDate(r['지원일자'])}</td>
+      <td>${stageBadge(r['전형단계'])}</td>
+      <td>${r['최종근무지']||'-'}</td>
+      <td>${opinionBadge(r['검토의견'])}</td>
+      <td>${r['최종연봉']||'-'}</td><td>${r['희망연봉']||'-'}</td>
+    </tr>`).join('');
+  renderPagination('recruitPagination', recruitPage, totalPages, p => { recruitPage=p; renderRecruitTable(); });
+}
+
+// ===== ORG =====
+function renderOrg() {
+  const map = {};
+  hrData.forEach(r => {
+    if (!r['성명']) return;
+    map[r['성명']] = { name: r['성명'], title: r['직급'], dept: r['부서'], children: [] };
+  });
+  let root = null;
+  hrData.forEach(r => {
+    if (!r['성명']) return;
+    const sup = r['상위자'];
+    if (!sup || !map[sup]) { if (!root) root = map[r['성명']]; }
+    else map[sup].children.push(map[r['성명']]);
+  });
+
+  const container = document.getElementById('orgTree');
+  container.innerHTML = '';
+  if (root) container.appendChild(renderOrgNode(root, 0));
+
+  document.getElementById('org-loading').style.display = 'none';
+  document.getElementById('org-content').style.display = 'block';
+}
+
+function renderOrgNode(node, level) {
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex;flex-direction:column;align-items:center;';
+
+  const card = document.createElement('div');
+  card.className = `org-card ${level===0?'root':level===1?'dept-head':level===2?'team-head':''}`;
+  card.innerHTML = `<div class="org-name">${node.name}</div><div class="org-title">${node.title||''}</div><div class="org-dept">${node.dept||''}</div>`;
+  div.appendChild(card);
+
+  if (node.children && node.children.length > 0) {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;justify-content:center;gap:16px;position:relative;padding-top:28px;margin-top:0;';
+
+    const vline = document.createElement('div');
+    vline.style.cssText = 'position:absolute;top:0;left:50%;transform:translateX(-50%);width:2px;height:28px;background:var(--border);';
+    wrap.appendChild(vline);
+
+    if (node.children.length > 1) {
+      const hline = document.createElement('div');
+      hline.style.cssText = 'position:absolute;top:28px;left:0;right:0;height:2px;background:var(--border);';
+      wrap.appendChild(hline);
+    }
+
+    node.children.forEach(child => {
+      const childWrap = document.createElement('div');
+      childWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;position:relative;padding-top:24px;';
+      if (node.children.length > 1) {
+        const cvline = document.createElement('div');
+        cvline.style.cssText = 'position:absolute;top:0;left:50%;transform:translateX(-50%);width:2px;height:24px;background:var(--border);';
+        childWrap.appendChild(cvline);
+      }
+      childWrap.appendChild(renderOrgNode(child, level+1));
+      wrap.appendChild(childWrap);
+    });
+    div.appendChild(wrap);
+  }
+  return div;
+}
+
+// ===== UTILS =====
+function renderChart(id, type, labels, data, colors) {
+  if (charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type,
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: type==='doughnut'?2:0, borderColor:'#fff', borderRadius: type==='bar'?6:0 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: type==='doughnut', position:'bottom', labels: { font:{size:11,family:'Pretendard'}, padding:8, boxWidth:12 } } },
+      scales: type==='bar' ? { y:{beginAtZero:true,ticks:{stepSize:1,font:{size:11}},grid:{color:'#f1f5f9'}}, x:{ticks:{font:{size:10}},grid:{display:false}} } : {}
+    }
+  });
+}
+
+function renderPagination(id, current, total, onClick) {
+  const el = document.getElementById(id);
+  if (total <= 1) { el.innerHTML=''; return; }
+  let html = `<div class="page-btn" onclick="(${onClick})(${Math.max(1,current-1)})">‹</div>`;
+  for (let i=1; i<=total; i++) {
+    if (i===1||i===total||Math.abs(i-current)<=1) html += `<div class="page-btn ${i===current?'active':''}" onclick="(${onClick})(${i})">${i}</div>`;
+    else if (Math.abs(i-current)===2) html += `<div class="page-btn" style="pointer-events:none">…</div>`;
+  }
+  html += `<div class="page-btn" onclick="(${onClick})(${Math.min(total,current+1)})">›</div>`;
+  el.innerHTML = html;
+}
+
+function formatDate(val) {
+  if (!val) return '-';
+  if (typeof val === 'number') {
+    const d = new Date(Math.round((val-25569)*86400*1000));
+    return d.toLocaleDateString('ko-KR');
+  }
+  const d = new Date(val);
+  return isNaN(d) ? val : d.toLocaleDateString('ko-KR');
+}
+
+function statusBadge(s) {
+  const m = {'재직':'badge-green','휴직':'badge-yellow','예정':'badge-blue','퇴직':'badge-red'};
+  return `<span class="badge ${m[s]||'badge-gray'}">${s||'-'}</span>`;
+}
+function stageBadge(s) {
+  const m = {'서류검토':'badge-blue','1차면접':'badge-purple','2차면접':'badge-purple','처우협의':'badge-yellow','최종합격':'badge-green','보류':'badge-gray','탈락':'badge-red'};
+  return `<span class="badge ${m[s]||'badge-gray'}">${s||'-'}</span>`;
+}
+function opinionBadge(s) {
+  const m = {'긍정검토':'badge-green','검토필요':'badge-yellow','보류':'badge-gray','탈락':'badge-red'};
+  return `<span class="badge ${m[s]||'badge-gray'}">${s||'-'}</span>`;
+}
+function showError(tab, msg) {
+  document.getElementById(`${tab}-loading`).style.display = 'none';
+  const el = document.getElementById(`${tab}-error`);
+  el.innerHTML = `<div class="error-state">⚠️ 오류: ${msg}</div>`;
+  el.style.display = 'block';
+}
+function showTab(tab, el) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('pageTitle').textContent = {hr:'인원현황',recruit:'채용현황',org:'조직도'}[tab];
+}
+
+init();
+</script>
+</body>
+</html>
