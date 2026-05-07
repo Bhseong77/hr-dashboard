@@ -398,11 +398,11 @@ function show(tab) {
 
 // ===== HR =====
 function renderHR() {
-  const active = hrData.filter(r => r['재직상태'] !== '퇴직');
-  const working = active.filter(r => r['재직상태'] === '재직');
-  const leave = active.filter(r => r['재직상태'] === '휴직');
-  const planned = active.filter(r => r['재직상태'] === '예정');
-  const regular = active.filter(r => r['고용형태'] === '정규직');
+  const active = hrData.filter(r => r['field_12'] !== '퇴직');
+  const working = active.filter(r => r['field_12'] === '재직');
+  const leave = active.filter(r => r['field_12'] === '휴직');
+  const planned = active.filter(r => r['field_12'] === '예정');
+  const regular = active.filter(r => r['field_13'] === '정규직');
 
   document.getElementById('kpi-total').innerHTML = `${working.length}<span class="kpi-unit">명</span>`;
   document.getElementById('kpi-total-sub').textContent = `예정 ${planned.length}명 포함 총 ${active.length}명`;
@@ -412,20 +412,20 @@ function renderHR() {
   document.getElementById('kpi-leave').innerHTML = `${leave.length}<span class="kpi-unit">명</span>`;
 
   const deptCount = {};
-  active.forEach(r => { const d = r['부서']||'미분류'; deptCount[d] = (deptCount[d]||0)+1; });
+  active.forEach(r => { const d = r['field_1']||'미분류'; deptCount[d] = (deptCount[d]||0)+1; });
   renderChart('deptChart','bar',Object.keys(deptCount),Object.values(deptCount),['#0f4c81','#1a6bb5','#00b4d8','#48cae4','#90e0ef','#f4a261','#e76f51','#2a9d8f']);
 
   const rankOrder = ['대표','부사장','전무','이사','부장','차장','과장','대리','사원'];
   const rankCount = {};
-  active.forEach(r => { const v=r['직급']||'기타'; rankCount[v]=(rankCount[v]||0)+1; });
+  active.forEach(r => { const v=r['field_3']||'기타'; rankCount[v]=(rankCount[v]||0)+1; });
   const sortedRanks = rankOrder.filter(r=>rankCount[r]).concat(Object.keys(rankCount).filter(r=>!rankOrder.includes(r)));
   renderChart('rankChart','doughnut',sortedRanks,sortedRanks.map(r=>rankCount[r]||0),['#0f4c81','#1a6bb5','#2563eb','#00b4d8','#10b981','#f59e0b','#f4a261','#e76f51','#ef4444']);
 
   const typeCount = {};
-  active.forEach(r => { const v=r['고용형태']||'기타'; typeCount[v]=(typeCount[v]||0)+1; });
+  active.forEach(r => { const v=r['field_13']||'기타'; typeCount[v]=(typeCount[v]||0)+1; });
   renderChart('typeChart','doughnut',Object.keys(typeCount),Object.values(typeCount),['#0f4c81','#00b4d8','#10b981','#f59e0b']);
 
-  const depts = [...new Set(hrData.map(r=>r['부서']).filter(Boolean))].sort();
+  const depts = [...new Set(hrData.map(r=>r['field_1']).filter(Boolean))].sort();
   const df = document.getElementById('deptFilter');
   df.innerHTML = '<option value="">전체 부서</option>';
   depts.forEach(d => { const o=document.createElement('option'); o.value=d; o.textContent=d; df.appendChild(o); });
@@ -440,10 +440,10 @@ function filterHrTable() {
   const dept = document.getElementById('deptFilter').value;
   const status = document.getElementById('statusFilter').value;
   const type = document.getElementById('typeFilter').value;
-  const active = hrData.filter(r => r['재직상태'] !== '퇴직');
+  const active = hrData.filter(r => r['field_12'] !== '퇴직');
   hrFiltered = active.filter(r => {
     const ms = !search || ['성명','부서','팀'].some(k => (r[k]||'').toLowerCase().includes(search));
-    return ms && (!dept||r['부서']===dept) && (!status||r['재직상태']===status) && (!type||r['고용형태']===type);
+    return ms && (!dept||r['field_1']===dept) && (!status||r['field_12']===status) && (!type||r['field_13']===type);
   });
   hrPage = 1;
   renderHrTable();
@@ -455,11 +455,11 @@ function renderHrTable() {
   document.getElementById('hrTableBody').innerHTML = hrFiltered.slice(start, start+PAGE_SIZE).map((r,i) => `
     <tr>
       <td style="color:var(--text-muted)">${start+i+1}</td>
-      <td>${r['부서']||'-'}</td><td>${r['팀']||'-'}</td><td>${r['직급']||'-'}</td>
-      <td><strong>${r['성명']||'-'}</strong></td>
-      <td>${formatDate(r['입사일자'])}</td><td>${r['근무지']||'-'}</td>
-      <td><span class="badge badge-blue">${r['고용형태']||'-'}</span></td>
-      <td>${statusBadge(r['재직상태'])}</td>
+      <td>${r['field_1']||'-'}</td><td>${r['field_2']||'-'}</td><td>${r['field_3']||'-'}</td>
+      <td><strong>${r['field_4']||'-'}</strong></td>
+      <td>${formatDate(r['field_7'])}</td><td>${r['field_8']||'-'}</td>
+      <td><span class="badge badge-blue">${r['field_13']||'-'}</span></td>
+      <td>${statusBadge(r['field_12'])}</td>
     </tr>`).join('');
   renderPagination('hrPagination', hrPage, totalPages, p => { hrPage=p; renderHrTable(); });
 }
@@ -529,15 +529,15 @@ function renderRecruitTable() {
 function renderOrg() {
   const map = {};
   hrData.forEach(r => {
-    if (!r['성명']) return;
-    map[r['성명']] = { name: r['성명'], title: r['직급'], dept: r['부서'], children: [] };
+    if (!r['field_4']) return;
+    map[r['field_4']] = { name: r['field_4'], title: r['field_3'], dept: r['field_1'], children: [] };
   });
   let root = null;
   hrData.forEach(r => {
-    if (!r['성명']) return;
-    const sup = r['상위자'];
-    if (!sup || !map[sup]) { if (!root) root = map[r['성명']]; }
-    else map[sup].children.push(map[r['성명']]);
+    if (!r['field_4']) return;
+    const sup = r['_xc0c1__xc704__xc790_'];
+    if (!sup || !map[sup]) { if (!root) root = map[r['field_4']]; }
+    else map[sup].children.push(map[r['field_4']]);
   });
 
   const container = document.getElementById('orgTree');
