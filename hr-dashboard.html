@@ -398,7 +398,7 @@ function show(tab) {
 
 // ===== HR =====
 function renderHR() {
-  const active = hrData.filter(r => r['field_12'] !== '퇴직');
+  const active = hrData.filter(r => r['field_4'] && r['field_12'] !== '퇴직');
   const working = active.filter(r => r['field_12'] === '재직');
   const leave = active.filter(r => r['field_12'] === '휴직');
   const planned = active.filter(r => r['field_12'] === '예정');
@@ -440,7 +440,7 @@ function filterHrTable() {
   const dept = document.getElementById('deptFilter').value;
   const status = document.getElementById('statusFilter').value;
   const type = document.getElementById('typeFilter').value;
-  const active = hrData.filter(r => r['field_12'] !== '퇴직');
+  const active = hrData.filter(r => r['field_4'] && r['field_12'] !== '퇴직');
   hrFiltered = active.filter(r => {
     const ms = !search || ['성명','부서','팀'].some(k => (r[k]||'').toLowerCase().includes(search));
     return ms && (!dept||r['field_1']===dept) && (!status||r['field_12']===status) && (!type||r['field_13']===type);
