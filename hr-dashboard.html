@@ -468,13 +468,13 @@ function renderHrTable() {
 function renderRecruit() {
   const stageOrder = ['서류검토','1차면접','2차면접','처우협의','최종합격','보류','탈락'];
   const stageCounts = {};
-  recruitData.forEach(r => { const s=r['전형단계']||'기타'; stageCounts[s]=(stageCounts[s]||0)+1; });
+  recruitData.forEach(r => { const s=r['field_7']||'기타'; stageCounts[s]=(stageCounts[s]||0)+1; });
 
   document.getElementById('stagePipeline').innerHTML = stageOrder.filter(s=>stageCounts[s]).map(s => `
     <div class="stage-item"><div class="stage-count">${stageCounts[s]}</div><div class="stage-label">${s}</div></div>`).join('');
 
   const posCount = {};
-  recruitData.forEach(r => { const v=r['채용공고포지션']||'기타'; posCount[v]=(posCount[v]||0)+1; });
+  recruitData.forEach(r => { const v=r['field_1']||'기타'; posCount[v]=(posCount[v]||0)+1; });
   renderChart('positionChart','bar',Object.keys(posCount),Object.values(posCount),['#0f4c81','#1a6bb5','#00b4d8','#10b981','#f59e0b','#f4a261']);
 
   const stageLabels = stageOrder.filter(s=>stageCounts[s]);
@@ -482,12 +482,12 @@ function renderRecruit() {
 
   const pf = document.getElementById('positionFilter');
   pf.innerHTML = '<option value="">전체 포지션</option>';
-  [...new Set(recruitData.map(r=>r['채용공고포지션']).filter(Boolean))].sort().forEach(p => {
+  [...new Set(recruitData.map(r=>r['field_1']).filter(Boolean))].sort().forEach(p => {
     const o=document.createElement('option'); o.value=p; o.textContent=p; pf.appendChild(o);
   });
   const sf = document.getElementById('stageFilter');
   sf.innerHTML = '<option value="">전체 전형단계</option>';
-  [...new Set(recruitData.map(r=>r['전형단계']).filter(Boolean))].forEach(s => {
+  [...new Set(recruitData.map(r=>r['field_7']).filter(Boolean))].forEach(s => {
     const o=document.createElement('option'); o.value=s; o.textContent=s; sf.appendChild(o);
   });
 
@@ -502,7 +502,7 @@ function filterRecruitTable() {
   const stage = document.getElementById('stageFilter').value;
   recruitFiltered = recruitData.filter(r => {
     const ms = !search || ['후보자명','채용공고포지션'].some(k=>(r[k]||'').toLowerCase().includes(search));
-    return ms && (!pos||r['채용공고포지션']===pos) && (!stage||r['전형단계']===stage);
+    return ms && (!pos||r['field_1']===pos) && (!stage||r['field_7']===stage);
   });
   recruitPage = 1;
   renderRecruitTable();
@@ -514,13 +514,13 @@ function renderRecruitTable() {
   document.getElementById('recruitTableBody').innerHTML = recruitFiltered.slice(start, start+PAGE_SIZE).map((r,i) => `
     <tr>
       <td style="color:var(--text-muted)">${start+i+1}</td>
-      <td><strong>${r['채용공고포지션']||'-'}</strong></td><td>${r['후보자명']||'-'}</td>
-      <td>${r['나이']||'-'}</td><td>${r['성별']||'-'}</td><td>${r['경력']||'-'}</td>
-      <td>${formatDate(r['지원일자'])}</td>
-      <td>${stageBadge(r['전형단계'])}</td>
-      <td>${r['최종근무지']||'-'}</td>
-      <td>${opinionBadge(r['검토의견'])}</td>
-      <td>${r['최종연봉']||'-'}</td><td>${r['희망연봉']||'-'}</td>
+      <td><strong>${r['field_1']||'-'}</strong></td><td>${r['field_2']||'-'}</td>
+      <td>${r['field_3']||'-'}</td><td>${r['field_4']||'-'}</td><td>${r['field_5']||'-'}</td>
+      <td>${formatDate(r['field_6'])}</td>
+      <td>${stageBadge(r['field_7'])}</td>
+      <td>${r['field_8']||'-'}</td>
+      <td>${opinionBadge(r['field_10'])}</td>
+      <td>${r['field_11']||'-'}</td><td>${r['field_12']||'-'}</td>
     </tr>`).join('');
   renderPagination('recruitPagination', recruitPage, totalPages, p => { recruitPage=p; renderRecruitTable(); });
 }
@@ -535,56 +535,84 @@ function renderOrg() {
   let root = null;
   hrData.forEach(r => {
     if (!r['field_4']) return;
-    const sup = r['_xc0c1__xc704__xc790_'];
+    const sup = (r['_xc0c1__xc704__xc790_']||'').trim().replace(/　/g,'');
     if (!sup || !map[sup]) { if (!root) root = map[r['field_4']]; }
     else map[sup].children.push(map[r['field_4']]);
   });
 
   const container = document.getElementById('orgTree');
   container.innerHTML = '';
+  container.style.cssText = 'display:flex;flex-direction:column;align-items:flex-start;gap:0;width:100%;';
   if (root) container.appendChild(renderOrgNode(root, 0));
-
   document.getElementById('org-loading').style.display = 'none';
   document.getElementById('org-content').style.display = 'block';
 }
 
 function renderOrgNode(node, level) {
-  const div = document.createElement('div');
-  div.style.cssText = 'display:flex;flex-direction:column;align-items:center;';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'width:100%;';
 
-  const card = document.createElement('div');
-  card.className = `org-card ${level===0?'root':level===1?'dept-head':level===2?'team-head':''}`;
-  card.innerHTML = `<div class="org-name">${node.name}</div><div class="org-title">${node.title||''}</div><div class="org-dept">${node.dept||''}</div>`;
-  div.appendChild(card);
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;align-items:center;padding:6px 0;padding-left:' + (level * 40) + 'px;';
 
-  if (node.children && node.children.length > 0) {
-    const wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex;justify-content:center;gap:16px;position:relative;padding-top:28px;margin-top:0;';
-
-    const vline = document.createElement('div');
-    vline.style.cssText = 'position:absolute;top:0;left:50%;transform:translateX(-50%);width:2px;height:28px;background:var(--border);';
-    wrap.appendChild(vline);
-
-    if (node.children.length > 1) {
-      const hline = document.createElement('div');
-      hline.style.cssText = 'position:absolute;top:28px;left:0;right:0;height:2px;background:var(--border);';
-      wrap.appendChild(hline);
-    }
-
-    node.children.forEach(child => {
-      const childWrap = document.createElement('div');
-      childWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;position:relative;padding-top:24px;';
-      if (node.children.length > 1) {
-        const cvline = document.createElement('div');
-        cvline.style.cssText = 'position:absolute;top:0;left:50%;transform:translateX(-50%);width:2px;height:24px;background:var(--border);';
-        childWrap.appendChild(cvline);
-      }
-      childWrap.appendChild(renderOrgNode(child, level+1));
-      wrap.appendChild(childWrap);
-    });
-    div.appendChild(wrap);
+  // 연결선
+  if (level > 0) {
+    const line = document.createElement('div');
+    line.style.cssText = 'width:24px;height:2px;background:var(--border);margin-right:8px;flex-shrink:0;';
+    row.appendChild(line);
   }
-  return div;
+
+  const hasChildren = node.children && node.children.length > 0;
+
+  // 카드
+  const card = document.createElement('div');
+  card.style.cssText = 'display:inline-flex;align-items:center;gap:10px;background:var(--surface);border:2px solid var(--border);border-radius:8px;padding:8px 14px;cursor:' + (hasChildren?'pointer':'default') + ';transition:all 0.15s;min-width:180px;';
+
+  if (level === 0) card.style.cssText += 'background:var(--primary);border-color:var(--primary);color:#fff;';
+  else if (level === 1) card.style.cssText += 'background:#e0f2fe;border-color:var(--accent);';
+  else if (level === 2) card.style.cssText += 'background:#f0fdf4;border-color:var(--success);';
+
+  const info = document.createElement('div');
+  info.innerHTML = '<div style="font-size:13px;font-weight:600;">' + node.name + '</div><div style="font-size:11px;opacity:0.7;margin-top:1px;">' + (node.title||'') + ' · ' + (node.dept||'') + '</div>';
+  card.appendChild(info);
+
+  let childrenWrap = null;
+
+  if (hasChildren) {
+    const badge = document.createElement('div');
+    badge.style.cssText = 'margin-left:auto;min-width:20px;height:20px;border-radius:10px;background:rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;padding:0 6px;flex-shrink:0;';
+    badge.textContent = node.children.length;
+    card.appendChild(badge);
+
+    const toggleIcon = document.createElement('span');
+    toggleIcon.textContent = '▾';
+    toggleIcon.style.cssText = 'font-size:12px;flex-shrink:0;transition:transform 0.2s;';
+    card.appendChild(toggleIcon);
+
+    childrenWrap = document.createElement('div');
+    childrenWrap.style.display = '';
+
+    card.onclick = function() {
+      const isHidden = childrenWrap.style.display === 'none';
+      childrenWrap.style.display = isHidden ? '' : 'none';
+      toggleIcon.style.transform = isHidden ? '' : 'rotate(-90deg)';
+    };
+
+    card.onmouseenter = function() { card.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'; card.style.transform = 'translateX(2px)'; };
+    card.onmouseleave = function() { card.style.boxShadow = ''; card.style.transform = ''; };
+  }
+
+  row.appendChild(card);
+  wrap.appendChild(row);
+
+  if (hasChildren) {
+    node.children.forEach(function(child) {
+      childrenWrap.appendChild(renderOrgNode(child, level + 1));
+    });
+    wrap.appendChild(childrenWrap);
+  }
+
+  return wrap;
 }
 
 // ===== UTILS =====
