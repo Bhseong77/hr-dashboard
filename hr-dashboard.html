@@ -119,6 +119,15 @@
   .site-btn:last-child { border-right: none; }
   .site-btn:hover { background: var(--surface2); }
   .site-btn.active { background: var(--primary); color: #fff; font-weight: 600; }
+
+  /* 총무관리 - Sub Tabs */
+  .subtab-nav { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
+  .subtab-btn { padding: 10px 20px; border: none; background: transparent; font-size: 14px; color: var(--text-muted); font-family: inherit; font-weight: 500; cursor: pointer; transition: all 0.15s; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+  .subtab-btn:hover { color: var(--text); }
+  .subtab-btn.active { color: var(--primary); font-weight: 700; border-bottom-color: var(--primary); }
+  .subtab-panel { display: none; }
+  .subtab-panel.active { display: block; }
+
   /* 근태 상태 배지 */
   .att-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
   .att-ontime { background: #d1fae5; color: #065f46; }
@@ -280,7 +289,17 @@
       <!-- ===== 총무관리 탭 ===== -->
       <div class="tab-panel" id="tab-admin">
         <div id="admin-content">
-          <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;">
+
+          <!-- Sub Tab Navigation -->
+          <div class="subtab-nav">
+            <button class="subtab-btn active" data-subtab="process" onclick="changeAdminSub('process')">프로세스</button>
+            <button class="subtab-btn" data-subtab="sw" onclick="changeAdminSub('sw')">💻 SW관리</button>
+            <button class="subtab-btn" data-subtab="vehicle" onclick="changeAdminSub('vehicle')">🚗 차량관리</button>
+          </div>
+
+          <!-- Sub Tab: 프로세스 (기존 내용) -->
+          <div class="subtab-panel active" id="subtab-process">
+<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;">
             <div class="kpi-card"><div class="kpi-label">이번달 세금계산서</div><div class="kpi-value" style="font-size:24px;">-<span class="kpi-unit">건</span></div><div class="kpi-sub">메일 연동 예정</div></div>
             <div class="kpi-card"><div class="kpi-label">법인카드 지출</div><div class="kpi-value" style="font-size:24px;">-<span class="kpi-unit">원</span></div><div class="kpi-sub">ERP 연동 예정</div></div>
             <div class="kpi-card"><div class="kpi-label">등록 S/W</div><div class="kpi-value" style="font-size:24px;">-<span class="kpi-unit">개</span></div><div class="kpi-sub">데이터 입력 예정</div></div>
@@ -396,9 +415,174 @@
               <div style="border:1px dashed var(--border);border-radius:8px;padding:20px;text-align:center;"><div style="font-size:28px;margin-bottom:8px;">💰</div><div style="font-size:12px;font-weight:600;">월 비용</div><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">세금계산서 연동 예정</div></div>
             </div>
           </div>
+          </div>
+
+          <!-- Sub Tab: SW관리 -->
+          <div class="subtab-panel" id="subtab-sw">
+            <!-- KPI -->
+            <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;">
+              <div class="kpi-card">
+                <div class="kpi-label">전체 라이선스</div>
+                <div class="kpi-value" style="font-size:24px;" id="kpi-sw-total">-<span class="kpi-unit">개</span></div>
+                <div class="kpi-sub">등록된 S/W</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">사용중</div>
+                <div class="kpi-value" style="font-size:24px;color:var(--success);" id="kpi-sw-active">-<span class="kpi-unit">개</span></div>
+                <div class="kpi-sub">정상 운영</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">만료 임박</div>
+                <div class="kpi-value" style="font-size:24px;color:var(--warning);" id="kpi-sw-expiring">-<span class="kpi-unit">개</span></div>
+                <div class="kpi-sub">60일 이내</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">만료</div>
+                <div class="kpi-value" style="font-size:24px;color:var(--danger);" id="kpi-sw-expired">-<span class="kpi-unit">개</span></div>
+                <div class="kpi-sub">갱신 또는 폐기 필요</div>
+              </div>
+            </div>
+
+            <!-- 차트 -->
+            <div class="charts-row" style="grid-template-columns:1fr 1fr;margin-bottom:16px;">
+              <div class="chart-card">
+                <div class="chart-title">제조사별 라이선스</div>
+                <div class="chart-wrap"><canvas id="swVendorChart"></canvas></div>
+              </div>
+              <div class="chart-card">
+                <div class="chart-title">부서별 라이선스</div>
+                <div class="chart-wrap"><canvas id="swDeptChart"></canvas></div>
+              </div>
+            </div>
+
+            <!-- 테이블 -->
+            <div class="table-card">
+              <div class="table-header">
+                <div class="table-title">S/W 라이선스 목록</div>
+                <div class="search-box"><span>🔍</span><input type="text" id="swSearch" placeholder="프로그램명, 사용자 검색..." oninput="renderSwTable()"></div>
+              </div>
+              <div class="filter-bar">
+                <select class="filter-select" id="swStatusFilter" onchange="renderSwTable()">
+                  <option value="">전체 상태</option>
+                  <option value="사용중">사용중</option>
+                  <option value="만료">만료</option>
+                  <option value="진행">진행</option>
+                  <option value="대기">대기</option>
+                </select>
+                <select class="filter-select" id="swVendorFilter" onchange="renderSwTable()">
+                  <option value="">전체 제조사</option>
+                </select>
+                <select class="filter-select" id="swDeptFilter" onchange="renderSwTable()">
+                  <option value="">전체 부서</option>
+                </select>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>No</th>
+                      <th>프로그램명</th>
+                      <th>제조사</th>
+                      <th>라이선스키</th>
+                      <th>만료일자</th>
+                      <th>부서</th>
+                      <th>사용자</th>
+                      <th>구매처</th>
+                      <th>상태</th>
+                    </tr>
+                  </thead>
+                  <tbody id="swTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub Tab: 차량관리 -->
+          <div class="subtab-panel" id="subtab-vehicle">
+            <!-- KPI -->
+            <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;">
+              <div class="kpi-card">
+                <div class="kpi-label">전체 차량</div>
+                <div class="kpi-value" style="font-size:24px;" id="kpi-veh-total">-<span class="kpi-unit">대</span></div>
+                <div class="kpi-sub">렌트 차량</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">사용중</div>
+                <div class="kpi-value" style="font-size:24px;color:var(--success);" id="kpi-veh-active">-<span class="kpi-unit">대</span></div>
+                <div class="kpi-sub">정상 운영</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">종료 임박</div>
+                <div class="kpi-value" style="font-size:24px;color:var(--warning);" id="kpi-veh-expiring">-<span class="kpi-unit">대</span></div>
+                <div class="kpi-sub">60일 이내</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">월 총 대여금</div>
+                <div class="kpi-value" style="font-size:22px;color:var(--primary);" id="kpi-veh-monthly">-<span class="kpi-unit">원</span></div>
+                <div class="kpi-sub">VAT 포함</div>
+              </div>
+            </div>
+
+            <!-- 차트 -->
+            <div class="charts-row" style="grid-template-columns:1fr 1fr;margin-bottom:16px;">
+              <div class="chart-card">
+                <div class="chart-title">차종별 보유 현황</div>
+                <div class="chart-wrap"><canvas id="vehTypeChart"></canvas></div>
+              </div>
+              <div class="chart-card">
+                <div class="chart-title">계약 종료 시기 분포</div>
+                <div class="chart-wrap"><canvas id="vehExpireChart"></canvas></div>
+              </div>
+            </div>
+
+            <!-- 임박 알림 -->
+            <div id="vehExpireBanner" style="display:none;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#92400e;">
+              <strong>⚠️ 종료 임박 차량 <span id="vehExpireCount">0</span>대</strong> · 60일 이내 계약 종료. 갱신 또는 반납 결정이 필요합니다.
+            </div>
+
+            <!-- 테이블 -->
+            <div class="table-card">
+              <div class="table-header">
+                <div class="table-title">법인 렌트 차량 목록</div>
+                <div class="search-box"><span>🔍</span><input type="text" id="vehSearch" placeholder="차량번호, 사용자 검색..." oninput="renderVehTable()"></div>
+              </div>
+              <div class="filter-bar">
+                <select class="filter-select" id="vehStatusFilter" onchange="renderVehTable()">
+                  <option value="">전체 상태</option>
+                  <option value="사용중">사용중</option>
+                  <option value="종료임박">종료임박</option>
+                  <option value="계약종료">계약종료</option>
+                  <option value="반납">반납</option>
+                  <option value="공용">공용</option>
+                </select>
+                <select class="filter-select" id="vehTypeFilter" onchange="renderVehTable()">
+                  <option value="">전체 차종</option>
+                </select>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>No</th>
+                      <th>차량번호</th>
+                      <th>차종</th>
+                      <th>계약종료일</th>
+                      <th>잔여일</th>
+                      <th>월대여금</th>
+                      <th>부서</th>
+                      <th>사용자</th>
+                      <th>렌트회사</th>
+                      <th>상태</th>
+                    </tr>
+                  </thead>
+                  <tbody id="vehTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
-
 
       <!-- ===== 근태관리 탭 ===== -->
       <div class="tab-panel" id="tab-attend">
@@ -1082,6 +1266,234 @@ function minToHm(min) {
   const h = Math.floor(min/60);
   const m = min % 60;
   return h + 'h ' + m + 'm';
+}
+
+// ===== ADMIN SUBTABS =====
+const SW_DATA = [{"ID":7395,"프로그램명":"SOLIDWORKS Standard","제조사":"Dassault Systèmes","라이선스키":"9000050169123672D8R3QF37","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":null,"등록일":"2025-02-28","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":7394,"프로그램명":"SOLIDWORKS Standard","제조사":"Dassault Systèmes","라이선스키":"9000050292454713NX5GZC99","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":null,"등록일":"2025-02-28","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":5649,"프로그램명":"(영구)한컴오피스 NEO 한/글 OPEN 라이선스(SMB프로모션용)","제조사":"한컴오피스","라이선스키":"DVHHT-E4UFR-EZWCG-YMHWW","사용일자":"2017-07-10","만료일자":null,"상태":"사용중","구매처":null,"구매금액":null,"사용부서명":null,"부서코드":null,"사용자":"ENJET(USER 21)","등록일":"2024-09-23","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":5648,"프로그램명":"(영구)한컴오피스 2022 한/글 open 라이선스","제조사":"한컴오피스","라이선스키":"제품번호:DVH4H-A4UFR-EZWWA-Q3JCU // 증서번호 202303240052","사용일자":"2023-03-24","만료일자":null,"상태":"사용중","구매처":null,"구매금액":null,"사용부서명":null,"부서코드":null,"사용자":"ENJET(USER 5)","등록일":"2024-09-23","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4758,"프로그램명":"progeCAD 2020 Professional x64","제조사":"progeSOFT","라이선스키":"6K9CPE-ATAWLK-6V11AP-FPW8B2","사용일자":null,"만료일자":null,"상태":"사용중","구매처":null,"구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":"전광선","등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4748,"프로그램명":"progeCAD Professional 2024 Single-9 user","제조사":"progeSOFT","라이선스키":"3J9LPE-ATAYJK-VX11AP- JJKJMG","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":"NGUYEN VU HONG PHUC","등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4747,"프로그램명":"progeCAD Professional 2024 Single-9 user","제조사":"progeSOFT","라이선스키":"6K9LPE-ATAYEL-3V11AP-K7FHBN","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":"설계기술팀 공용노트북","등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4746,"프로그램명":"progeCAD Professional 2024 Single-9 user","제조사":"progeSOFT","라이선스키":"6K9LPE-ATAX5D-JW11AP-3FNPPU","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4745,"프로그램명":"progeCAD Professional 2024 Single-9 user","제조사":"progeSOFT","라이선스키":"6K9LPE-ATAX4R-EW11AP-FFNJGG","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4744,"프로그램명":"progeCAD Professional 2024 Single-9 user","제조사":"progeSOFT","라이선스키":"6K9LPE-ATAX4Q-7V11AP-DFL57Z","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4743,"프로그램명":"progeCAD Professional 2024 Single-9 user","제조사":"progeSOFT","라이선스키":"6K9LPE-ATAXZX-PX11AP-JN7Z5E","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":"서혜정","등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4742,"프로그램명":"progeCAD Professional 2024 Single-9 user","제조사":"progeSOFT","라이선스키":"6K9LPE-ATAXZT-FX11AP-DL8BTH","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4741,"프로그램명":"progeCAD Professional 2024 Single-9 user","제조사":"progeSOFT","라이선스키":"K9LPE-ATAXZS-TX11AP-4DM6RT","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4740,"프로그램명":"progeCAD Professional 2024 Single-9 user","제조사":"progeSOFT","라이선스키":"6K9LPE-ATAXZB-SW11AP-8DM2EZ","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4739,"프로그램명":"progeCAD Professional 2022 Single -3 user","제조사":"progeSOFT","라이선스키":"6K9LPE-ATAXPZ-5U11AP-9864EJ","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":"Head part","부서코드":null,"사용자":"강윤재","등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4738,"프로그램명":"progeCAD Professional 2022 Single -3 user","제조사":"progeSOFT","라이선스키":"6K9LPE-ATAXP2-WW11AP-2UQ5KL","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":"나인호","등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4737,"프로그램명":"progeCAD Professional 2022 Single -3 user","제조사":"progeSOFT","라이선스키":"6K9LPE-ATAXFH-5V11AP-V91HWX","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4736,"프로그램명":"progeCAD Professional 2021 Single-2 user","제조사":"progeSOFT","라이선스키":"6K9LPE-ATAW1M-3U11AP-YCHBX1","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4735,"프로그램명":"progeCAD Professional 2021 Single-2 user","제조사":"progeSOFT","라이선스키":"6K9LPE-ATAW1F-5U11AP-WCG7LL","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4734,"프로그램명":"progeCAD Professional 2021 Single-2 user","제조사":"progeSOFT","라이선스키":"6KLPE - ATAWVG - TW11AP - Z44EWU","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4733,"프로그램명":"progeCAD Professional 2021 Single-2 user","제조사":"progeSOFT","라이선스키":"6KLPE - ATAWVH - YW11AP - R439QZ","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4732,"프로그램명":"progeCAD Professional 2020 Single-1 user","제조사":"progeSOFT","라이선스키":"6K9LPE-ATAWL1-4W11AP-JSFVDW","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4731,"프로그램명":"progeCAD Professional 2020 Single-5 user","제조사":"progeSOFT","라이선스키":"6K9LPE-ATAWFY-1W11AP-FGBDXC","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4730,"프로그램명":"progeCAD Professional 2020 Single-5 user","제조사":"progeSOFT","라이선스키":"6K9LPE-ATAWF6-WV11AP-NGA9DF","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4729,"프로그램명":"progeCAD Professional 2020 Single-5 user","제조사":"progeSOFT","라이선스키":"3J9LPE-ATAWGF-1V11AP-UGW5BU","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4728,"프로그램명":"progeCAD Professional 2020 Single-5 user","제조사":"progeSOFT","라이선스키":"3J9LPE-ATAWF3-4V11AP-YGWZQ6","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":"Hoang Nguyen","등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4727,"프로그램명":"progeCAD Professional 2020 Single-5 user","제조사":"progeSOFT","라이선스키":"3J9LPE-ATAWF5-2W11AP-HGWVLQ","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":"기술연구소","부서코드":300,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4726,"프로그램명":"progeCAD Professional 2020 Network-5 user","제조사":"progeSOFT","라이선스키":"NLM6K91PE:ATAWF3R41:1AP3GCCEF","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4725,"프로그램명":"progeCAD Professional 2020 Network-5 user","제조사":"progeSOFT","라이선스키":"NLM6K91PE:ATAWGA941:1APYGB8FW","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":"박채림","등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4724,"프로그램명":"progeCAD Professional 2020 Network-5 user","제조사":"progeSOFT","라이선스키":"NLM6K91PE:ATAWFN651:1APEGB3NZ","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4723,"프로그램명":"progeCAD Professional 2020 Network-5 user","제조사":"progeSOFT","라이선스키":"NLM6K91PE:ATAWFP661:1APNGBXWS","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4722,"프로그램명":"progeCAD Professional 2020 Network-5 user","제조사":"progeSOFT","라이선스키":"NLM6K91PE:ATAWFLH51:1AP3GBSY5","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"크로스테크","구매금액":null,"사용부서명":null,"부서코드":null,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4721,"프로그램명":"SOLIDWORKS Premium","제조사":"Dassault Systèmes","라이선스키":"9000013632536908287PDRFH","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4720,"프로그램명":"SOLIDWORKS Premium","제조사":"Dassault Systèmes","라이선스키":"9000013632528047VVKHGPJJ","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4719,"프로그램명":"SOLIDWORKS Premium","제조사":"Dassault Systèmes","라이선스키":"9000013632514661WSK888GH","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":"김광덕","등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4718,"프로그램명":"Visualize Standard","제조사":"Dassault Systèmes","라이선스키":"90000500592676312QBFC5G8","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4717,"프로그램명":"SOLIDWORKS Professional","제조사":"Dassault Systèmes","라이선스키":"90000502924727025C67BM4C","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4716,"프로그램명":"SOLIDWORKS Standard","제조사":"Dassault Systèmes","라이선스키":"90000154649428205TN2TV6C","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"기술연구소","부서코드":300,"사용자":"공용","등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4715,"프로그램명":"SOLIDWORKS Standard","제조사":"Dassault Systèmes","라이선스키":"9000015464933880DWV4BJ7B","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":"호왕유엔","등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4714,"프로그램명":"SOLIDWORKS Standard","제조사":"Dassault Systèmes","라이선스키":"9000030768004665XZDWCX6B","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4713,"프로그램명":"SOLIDWORKS Standard","제조사":"Dassault Systèmes","라이선스키":"9000030768004665XZDWCX6B","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4712,"프로그램명":"SOLIDWORKS Standard","제조사":"Dassault Systèmes","라이선스키":"90000165308451434Q6Q6C37","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4711,"프로그램명":"SOLIDWORKS Standard","제조사":"Dassault Systèmes","라이선스키":"9000015464924505JNB3P8J7","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":"장비사업본부 공용PC","등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4710,"프로그램명":"SOLIDWORKS Standard","제조사":"Dassault Systèmes","라이선스키":"9000030678137792HKRY39CD","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":"성봉준","등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4709,"프로그램명":"SOLIDWORKS Standard","제조사":"Dassault Systèmes","라이선스키":"9000029757163683BT84FYG4","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4708,"프로그램명":"SOLIDWORKS Standard","제조사":"Dassault Systèmes","라이선스키":"9000025738160065V5GN9FKG","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":"전광선","등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4707,"프로그램명":"SOLIDWORKS Standard","제조사":"Dassault Systèmes","라이선스키":"900002573815182347YQ2DG7","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"ES사업부","부서코드":200,"사용자":"권오준","등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4706,"프로그램명":"SOLIDWORKS Standard","제조사":"Dassault Systèmes","라이선스키":"90000257381434978Z5PF46F","사용일자":null,"만료일자":null,"상태":"사용중","구매처":"위버맨시","구매금액":null,"사용부서명":"기술연구소","부서코드":300,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4702,"프로그램명":"AutoCAD (3y)","제조사":null,"라이선스키":"S/N : 573-46445531 계약번호 : '110004215196","사용일자":null,"만료일자":"2025-12-04","상태":"만료","구매처":"이안소프트","구매금액":null,"사용부서명":"시스템엔지니어링","부서코드":201,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4701,"프로그램명":"AutoCAD (3y)","제조사":null,"라이선스키":"S/N : 572-93652389 / 568-96129959 계약번호 : '110003044512","사용일자":null,"만료일자":"2026-04-07","상태":"만료","구매처":"이안소프트","구매금액":null,"사용부서명":"시스템엔지니어링","부서코드":201,"사용자":"성봉준","등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4700,"프로그램명":"AutoCAD (3y)","제조사":null,"라이선스키":"S/N : 574-57741450 계약번호 : '110004701791","사용일자":null,"만료일자":"2027-04-04","상태":"사용중","구매처":"이안소프트","구매금액":null,"사용부서명":"시스템엔지니어링","부서코드":201,"사용자":"김광덕","등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4699,"프로그램명":"AutoCAD (3y)","제조사":null,"라이선스키":"S/N : 571-59788629 계약번호 : '110003509592","사용일자":null,"만료일자":"2027-04-04","상태":"사용중","구매처":"이안소프트","구매금액":null,"사용부서명":"시스템엔지니어링","부서코드":201,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4698,"프로그램명":"SOLIDWORKS Standard with Cloud Services","제조사":null,"라이선스키":"9000050633443200VS6HFWJ2","사용일자":null,"만료일자":"2025-09-30","상태":"만료","구매처":"위버맨시","구매금액":null,"사용부서명":"시스템엔지니어링","부서코드":201,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"},{"ID":4697,"프로그램명":"SOLIDWORKS Standard with Cloud Services","제조사":null,"라이선스키":"9000050633443200VS6HFWJ2","사용일자":null,"만료일자":"2025-09-30","상태":"만료","구매처":"위버맨시","구매금액":null,"사용부서명":"시스템엔지니어링","부서코드":201,"사용자":null,"등록일":"2024-06-21","등록자명":"정진영 과장","등록자이메일":"jyjung@enjet.co.kr"}];
+const VEHICLE_DATA = [{"차량번호":"169호8943","차종":"카니발","계약기간":"5년","계약종료일":"2027-04-27","상태":"사용중","결제일":"매월20일","보증금":10000000,"월대여금":650000,"부서":"공용","사용자":null,"렌트회사":"롯데렌터카","렌트회사연락처":null,"비고":"공용차량 전환예정","잔여일수":353},{"차량번호":"172허4518","차종":"그랜저","계약기간":"4년","계약종료일":"2026-11-16","상태":"사용중","결제일":"매월20일","보증금":10000000,"월대여금":640000,"부서":"리사이클링","사용자":"강동헌","렌트회사":null,"렌트회사연락처":null,"비고":"22.11.16 수령","잔여일수":191},{"차량번호":"170호2629","차종":"G90","계약기간":"4년","계약종료일":"2026-11-10","상태":"사용중","결제일":"매월말일","보증금":16814000,"월대여금":1463000,"부서":"임원","사용자":"대표이사","렌트회사":"SK렌터카","렌트회사연락처":"010-3585-8137","비고":"010-9128-0863\n(G90 차량점검원) / 1년 연장","잔여일수":185},{"차량번호":"230허6971","차종":"투싼","계약기간":"5년","계약종료일":"2027-12-25","상태":"사용중","결제일":"매월말일","보증금":10000000,"월대여금":560000,"부서":"리사이클링","사용자":null,"렌트회사":null,"렌트회사연락처":null,"비고":"2025.08.20 부 차량 변경 / EMR 출근 차량 사용","잔여일수":595},{"차량번호":"191하6991","차종":"그랜저","계약기간":"5년","계약종료일":"2027-05-08","상태":"사용중","결제일":"매월말일","보증금":10000000,"월대여금":597000,"부서":"기술연구소","사용자":"손원일","렌트회사":null,"렌트회사연락처":null,"비고":null,"잔여일수":364},{"차량번호":"193호8309","차종":"GV80","계약기간":"4년","계약종료일":"2026-12-28","상태":"사용중","결제일":"매월21일","보증금":23550000,"월대여금":1318680,"부서":"고문","사용자":"정재우","렌트회사":"하나캐피탈","렌트회사연락처":null,"비고":"22.12.29 수령","잔여일수":233},{"차량번호":"143호2737","차종":"그랜저","계약기간":"5년","계약종료일":"2028-08-02","상태":"사용중","결제일":"매월20일","보증금":10000000,"월대여금":621900,"부서":"제조팀","사용자":"전광선","렌트회사":"BNK캐피탈","렌트회사연락처":null,"비고":"23.08.03 수령","잔여일수":816},{"차량번호":"193호2109","차종":"그랜저","계약기간":"3년","계약종료일":"2026-09-19","상태":"사용중","결제일":"매월20일","보증금":10000000,"월대여금":724500,"부서":"제조팀","사용자":"이형동","렌트회사":"BNK캐피탈","렌트회사연락처":null,"비고":"23.09.20 수령","잔여일수":133},{"차량번호":"152허2268","차종":"G80","계약기간":"5년","계약종료일":"2028-07-17","상태":"사용중","결제일":"매월20일","보증금":10000000,"월대여금":970750,"부서":"경영전략본부","사용자":"성백훈","렌트회사":"롯데캐피탈","렌트회사연락처":null,"비고":"23.07.18 수령 / 김상준 전 부사장, 고문계약 체결, 26/03/31 기간 까지 차량 제공","잔여일수":800}];
+
+function changeAdminSub(name) {
+  document.querySelectorAll('.subtab-btn').forEach(b => b.classList.toggle('active', b.dataset.subtab === name));
+  document.querySelectorAll('.subtab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('subtab-' + name).classList.add('active');
+  if (name === 'sw') renderSw();
+  if (name === 'vehicle') renderVeh();
+}
+
+// ===== SW =====
+function renderSw() {
+  const today = new Date();
+  const sixtyDaysLater = new Date(today.getTime() + 60*24*60*60*1000);
+
+  // 상태 재계산 (만료일 기준)
+  SW_DATA.forEach(r => {
+    if (r.만료일자) {
+      const exp = new Date(r.만료일자);
+      if (exp < today) r._status = '만료';
+      else if (exp <= sixtyDaysLater) r._status = '만료임박';
+      else r._status = r.상태 || '사용중';
+    } else {
+      r._status = r.상태 || '사용중';
+    }
+  });
+
+  const total = SW_DATA.length;
+  const active = SW_DATA.filter(r => r._status === '사용중').length;
+  const expiring = SW_DATA.filter(r => r._status === '만료임박').length;
+  const expired = SW_DATA.filter(r => r._status === '만료').length;
+
+  document.getElementById('kpi-sw-total').innerHTML = total + '<span class="kpi-unit">개</span>';
+  document.getElementById('kpi-sw-active').innerHTML = active + '<span class="kpi-unit">개</span>';
+  document.getElementById('kpi-sw-expiring').innerHTML = expiring + '<span class="kpi-unit">개</span>';
+  document.getElementById('kpi-sw-expired').innerHTML = expired + '<span class="kpi-unit">개</span>';
+
+  // 제조사별
+  const vendorCounts = {};
+  SW_DATA.forEach(r => {
+    const v = r.제조사 || '기타';
+    vendorCounts[v] = (vendorCounts[v] || 0) + 1;
+  });
+  const vendors = Object.keys(vendorCounts).sort((a,b) => vendorCounts[b] - vendorCounts[a]);
+  renderChart('swVendorChart', 'doughnut', vendors, vendors.map(v => vendorCounts[v]),
+    ['#0f4c81','#1a6bb5','#00b4d8','#f4a261','#10b981','#94a3b8']);
+
+  // 부서별
+  const deptCounts = {};
+  SW_DATA.forEach(r => {
+    const d = r.사용부서명 || '미지정';
+    deptCounts[d] = (deptCounts[d] || 0) + 1;
+  });
+  const depts = Object.keys(deptCounts).sort((a,b) => deptCounts[b] - deptCounts[a]);
+  renderChart('swDeptChart', 'bar', depts, depts.map(d => deptCounts[d]), depts.map(()=>'#0f4c81'));
+
+  // 필터 옵션 채우기
+  const vSel = document.getElementById('swVendorFilter');
+  if (vSel.options.length <= 1) {
+    vendors.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; vSel.appendChild(o); });
+  }
+  const dSel = document.getElementById('swDeptFilter');
+  if (dSel.options.length <= 1) {
+    depts.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; dSel.appendChild(o); });
+  }
+
+  renderSwTable();
+}
+
+function renderSwTable() {
+  const search = (document.getElementById('swSearch').value || '').toLowerCase();
+  const status = document.getElementById('swStatusFilter').value;
+  const vendor = document.getElementById('swVendorFilter').value;
+  const dept = document.getElementById('swDeptFilter').value;
+
+  const filtered = SW_DATA.filter(r => {
+    if (status && r._status !== status && !(status === '사용중' && r._status === '만료임박')) return false;
+    if (vendor && r.제조사 !== vendor) return false;
+    if (dept && r.사용부서명 !== dept) return false;
+    if (search) {
+      const hay = ((r.프로그램명||'') + ' ' + (r.사용자||'') + ' ' + (r.제조사||'')).toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const tbody = document.getElementById('swTableBody');
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted);">조건에 맞는 데이터가 없습니다</td></tr>';
+    return;
+  }
+
+  const badge = { '사용중':'att-ontime', '만료임박':'att-late', '만료':'att-missing', '진행':'att-late', '대기':'att-absent' };
+  tbody.innerHTML = filtered.map((r,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${r.프로그램명 || '-'}</td>
+      <td>${r.제조사 || '<span style="color:var(--text-muted)">-</span>'}</td>
+      <td style="font-family:monospace;font-size:11px;">${r.라이선스키 || '-'}</td>
+      <td>${r.만료일자 || '<span style="color:var(--text-muted)">영구</span>'}</td>
+      <td>${r.사용부서명 || '<span style="color:var(--text-muted)">-</span>'}</td>
+      <td>${r.사용자 || '<span style="color:var(--text-muted)">-</span>'}</td>
+      <td>${r.구매처 || '<span style="color:var(--text-muted)">-</span>'}</td>
+      <td><span class="att-badge ${badge[r._status] || 'att-absent'}">${r._status}</span></td>
+    </tr>
+  `).join('');
+}
+
+// ===== VEHICLE =====
+function renderVeh() {
+  const today = new Date();
+  const sixtyDaysLater = new Date(today.getTime() + 60*24*60*60*1000);
+
+  VEHICLE_DATA.forEach(r => {
+    if (r.계약종료일) {
+      const exp = new Date(r.계약종료일);
+      if (exp < today) r._status = '계약종료';
+      else if (exp <= sixtyDaysLater) r._status = '종료임박';
+      else r._status = r.상태 || '사용중';
+      r._daysLeft = Math.ceil((exp - today) / (1000*60*60*24));
+    } else {
+      r._status = r.상태 || '사용중';
+      r._daysLeft = null;
+    }
+  });
+
+  const total = VEHICLE_DATA.length;
+  const active = VEHICLE_DATA.filter(r => r._status === '사용중').length;
+  const expiring = VEHICLE_DATA.filter(r => r._status === '종료임박').length;
+  const monthlyTotal = VEHICLE_DATA.reduce((sum, r) => sum + (r.월대여금 || 0), 0);
+
+  document.getElementById('kpi-veh-total').innerHTML = total + '<span class="kpi-unit">대</span>';
+  document.getElementById('kpi-veh-active').innerHTML = active + '<span class="kpi-unit">대</span>';
+  document.getElementById('kpi-veh-expiring').innerHTML = expiring + '<span class="kpi-unit">대</span>';
+  document.getElementById('kpi-veh-monthly').innerHTML = (monthlyTotal/10000).toLocaleString('ko-KR') + '<span class="kpi-unit">만원</span>';
+
+  // 임박 배너
+  const banner = document.getElementById('vehExpireBanner');
+  if (expiring > 0) {
+    banner.style.display = 'block';
+    document.getElementById('vehExpireCount').textContent = expiring;
+  } else {
+    banner.style.display = 'none';
+  }
+
+  // 차종별
+  const typeCounts = {};
+  VEHICLE_DATA.forEach(r => {
+    const t = r.차종 || '기타';
+    typeCounts[t] = (typeCounts[t] || 0) + 1;
+  });
+  const types = Object.keys(typeCounts).sort((a,b) => typeCounts[b] - typeCounts[a]);
+  renderChart('vehTypeChart', 'doughnut', types, types.map(t => typeCounts[t]),
+    ['#0f4c81','#1a6bb5','#00b4d8','#f4a261','#10b981','#94a3b8']);
+
+  // 종료 시기 분포 (3개월 단위 버킷)
+  const buckets = { '60일 이내':0, '3개월':0, '6개월':0, '1년 이내':0, '1년 이상':0 };
+  VEHICLE_DATA.forEach(r => {
+    if (!r._daysLeft) return;
+    const d = r._daysLeft;
+    if (d <= 60) buckets['60일 이내']++;
+    else if (d <= 90) buckets['3개월']++;
+    else if (d <= 180) buckets['6개월']++;
+    else if (d <= 365) buckets['1년 이내']++;
+    else buckets['1년 이상']++;
+  });
+  const bLabels = Object.keys(buckets);
+  const bColors = ['#ef4444','#f59e0b','#f4a261','#1a6bb5','#10b981'];
+  renderChart('vehExpireChart', 'bar', bLabels, bLabels.map(l => buckets[l]), bColors);
+
+  // 차종 필터
+  const tSel = document.getElementById('vehTypeFilter');
+  if (tSel.options.length <= 1) {
+    types.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; tSel.appendChild(o); });
+  }
+
+  renderVehTable();
+}
+
+function renderVehTable() {
+  const search = (document.getElementById('vehSearch').value || '').toLowerCase();
+  const status = document.getElementById('vehStatusFilter').value;
+  const vtype = document.getElementById('vehTypeFilter').value;
+
+  const filtered = VEHICLE_DATA.filter(r => {
+    if (status && r._status !== status) return false;
+    if (vtype && r.차종 !== vtype) return false;
+    if (search) {
+      const hay = ((r.차량번호||'') + ' ' + (r.사용자||'') + ' ' + (r.차종||'')).toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const tbody = document.getElementById('vehTableBody');
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted);">조건에 맞는 데이터가 없습니다</td></tr>';
+    return;
+  }
+
+  const badge = { '사용중':'att-ontime', '종료임박':'att-late', '계약종료':'att-missing', '반납':'att-absent', '공용':'att-early' };
+  tbody.innerHTML = filtered.map((r,i) => {
+    const daysCell = r._daysLeft != null
+      ? (r._daysLeft < 0
+          ? `<span style="color:var(--danger);font-weight:600;">${r._daysLeft}일</span>`
+          : r._daysLeft <= 60
+            ? `<span style="color:var(--warning);font-weight:600;">${r._daysLeft}일</span>`
+            : `${r._daysLeft}일`)
+      : '<span style="color:var(--text-muted)">-</span>';
+    const fee = r.월대여금 ? r.월대여금.toLocaleString('ko-KR') + '원' : '<span style="color:var(--text-muted)">-</span>';
+    return `
+    <tr>
+      <td>${i+1}</td>
+      <td style="font-weight:600;">${r.차량번호 || '-'}</td>
+      <td>${r.차종 || '-'}</td>
+      <td>${r.계약종료일 || '<span style="color:var(--text-muted)">-</span>'}</td>
+      <td>${daysCell}</td>
+      <td>${fee}</td>
+      <td>${r.부서 || '<span style="color:var(--text-muted)">-</span>'}</td>
+      <td>${r.사용자 || '<span style="color:var(--text-muted)">-</span>'}</td>
+      <td>${r.렌트회사 || '<span style="color:var(--text-muted)">-</span>'}</td>
+      <td><span class="att-badge ${badge[r._status] || 'att-absent'}">${r._status}</span></td>
+    </tr>
+  `;}).join('');
 }
 
 // ===== UTILS =====
