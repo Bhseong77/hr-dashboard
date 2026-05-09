@@ -492,6 +492,7 @@
                     <th>퇴근</th>
                     <th>총 근무시간</th>
                     <th>8시간 초과</th>
+                    <th>월 누적 초과</th>
                     <th>상태</th>
                   </tr>
                 </thead>
@@ -931,7 +932,7 @@ function renderAttend() {
     setKpis(0,0,0,0);
     document.getElementById('correctionBanner').style.display = 'none';
     document.getElementById('attendTableBody').innerHTML =
-      '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted);">본사 데이터는 추후 연동 예정입니다</td></tr>';
+      '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted);">본사 데이터는 추후 연동 예정입니다</td></tr>';
     renderChart('attendHourChart', 'bar', ['데이터 없음'], [0], ['#e2e8f0']);
     renderChart('attendWeekChart', 'bar', ['데이터 없음'], [0], ['#e2e8f0']);
     return;
@@ -995,6 +996,7 @@ function renderAttend() {
   }
 
   attendCurrentRows = classified;
+  monthlyOvertimeMap = calcMonthlyOvertime(data, targetDate);
   renderAttendTable();
 }
 
@@ -1008,12 +1010,16 @@ function renderAttendTable() {
   });
   const tbody = document.getElementById('attendTableBody');
   if (filtered.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted);">해당 조건의 데이터가 없습니다</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted);">해당 조건의 데이터가 없습니다</td></tr>';
     return;
   }
   const badgeClass = { '정시출근':'att-ontime', '지각':'att-late', '조퇴':'att-early', '미찍음':'att-missing', '미출근':'att-absent' };
   tbody.innerHTML = filtered.map((r,i) => {
     const work = calcWorkHours(r.in, r.out);
+    const monthly = monthlyOvertimeMap[r.name] || 0;
+    const monthlyLabel = monthly > 0
+      ? `<span style="color:var(--primary);font-weight:600;">${minToHm(monthly)}</span>`
+      : '<span style="color:var(--text-muted)">-</span>';
     return `
     <tr>
       <td>${i+1}</td>
@@ -1024,6 +1030,7 @@ function renderAttendTable() {
       <td>${r.out || '<span style="color:var(--text-muted)">-</span>'}</td>
       <td>${work.totalLabel}</td>
       <td>${work.overLabel}</td>
+      <td>${monthlyLabel}</td>
       <td><span class="att-badge ${badgeClass[r.status]}">${r.status}</span></td>
     </tr>
   `;}).join('');
@@ -1034,12 +1041,12 @@ function calcWorkHours(inT, outT) {
   if (!inT || !outT) {
     return {
       totalLabel: '<span style="color:var(--text-muted)">-</span>',
-      overLabel: '<span style="color:var(--text-muted)">-</span>'
+      overLabel: '<span style="color:var(--text-muted)">-</span>',
+      overMin: 0
     };
   }
   const inMin = toMin(inT);
   const outMin = toMin(outT);
-  // 점심 1시간 차감 (퇴근-출근 시간이 5시간 이상일 때만)
   const grossMin = outMin - inMin;
   const netMin = grossMin >= 5*60 ? grossMin - 60 : grossMin;
   const overMin = Math.max(0, netMin - 8*60);
@@ -1047,8 +1054,27 @@ function calcWorkHours(inT, outT) {
     totalLabel: minToHm(netMin),
     overLabel: overMin > 0
       ? `<span style="color:var(--warning);font-weight:600;">${minToHm(overMin)}</span>`
-      : '<span style="color:var(--text-muted)">-</span>'
+      : '<span style="color:var(--text-muted)">-</span>',
+    overMin
   };
+}
+
+// 기준일이 속한 월의 1일~기준일까지, 사람별 누적 초과 시간 계산
+let monthlyOvertimeMap = {};
+function calcMonthlyOvertime(allData, targetDate) {
+  const target = new Date(targetDate);
+  const year = target.getFullYear();
+  const month = target.getMonth(); // 0-indexed
+  const map = {};
+  allData.forEach(r => {
+    if (!r.in || !r.out) return;
+    const d = new Date(r.date);
+    if (d.getFullYear() !== year || d.getMonth() !== month) return;
+    if (d > target) return; // 기준일 이후는 제외
+    const work = calcWorkHours(r.in, r.out);
+    map[r.name] = (map[r.name] || 0) + work.overMin;
+  });
+  return map;
 }
 
 function minToHm(min) {
