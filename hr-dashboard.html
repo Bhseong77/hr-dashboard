@@ -173,7 +173,7 @@
       <div class="nav-item" onclick="showTab('recruit', this)"><span class="nav-icon">📋</span> 채용현황</div>
       <div class="nav-item" onclick="showTab('org', this)"><span class="nav-icon">🏢</span> 조직도</div>
       <div class="nav-item" onclick="showTab('admin', this)"><span class="nav-icon">⚙️</span> 총무관리</div>
-      <div class="nav-item" onclick="showTab('admin', this)"><span class="nav-icon">⚙️</span> 총무관리</div>
+      <div class="nav-item" onclick="showTab('attend', this)"><span class="nav-icon">🕐</span> 근태관리</div>
     </nav>
     <div class="sidebar-footer">
       <div class="user-info" id="userInfo"><span class="sync-dot"></span>로딩 중...</div>
@@ -387,8 +387,113 @@
       </div>
 
 
-    </div>
-  </main>
+      <!-- ===== 근태관리 탭 ===== -->
+      <div class="tab-panel" id="tab-attend">
+        <div id="attend-content">
+          <!-- KPI -->
+          <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;">
+            <div class="kpi-card">
+              <div class="kpi-label">오늘 출근</div>
+              <div class="kpi-value" style="font-size:24px;" id="kpi-attend-in">-<span class="kpi-unit">명</span></div>
+              <div class="kpi-sub" id="kpi-attend-in-sub">데이터 연동 예정</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">근태 이상</div>
+              <div class="kpi-value" style="font-size:24px;" id="kpi-attend-issue">-<span class="kpi-unit">건</span></div>
+              <div class="kpi-sub">지각/조퇴/결근</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">오늘 휴가자</div>
+              <div class="kpi-value" style="font-size:24px;" id="kpi-attend-off">-<span class="kpi-unit">명</span></div>
+              <div class="kpi-sub">연차/반차/특별휴가</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">이번달 평균 근무시간</div>
+              <div class="kpi-value" style="font-size:24px;" id="kpi-attend-hours">-<span class="kpi-unit">h</span></div>
+              <div class="kpi-sub">주 40h 기준</div>
+            </div>
+          </div>
+
+          <!-- 차트 영역 -->
+          <div class="charts-row" style="grid-template-columns:1fr 1fr;margin-bottom:16px;">
+            <div class="chart-card">
+              <div class="chart-title">이번주 출/퇴근 현황</div>
+              <div class="chart-wrap"><canvas id="attendWeekChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-title">휴가 유형별 사용</div>
+              <div class="chart-wrap"><canvas id="leaveTypeChart"></canvas></div>
+            </div>
+          </div>
+
+          <!-- 출/퇴근 현황 테이블 -->
+          <div class="table-card" style="margin-bottom:16px;">
+            <div class="table-header">
+              <div class="table-title">오늘 출/퇴근 현황</div>
+              <div class="search-box"><span>🔍</span><input type="text" id="attendSearch" placeholder="이름, 부서 검색..." disabled></div>
+            </div>
+            <div class="filter-bar">
+              <select class="filter-select" disabled><option>전체 부서</option></select>
+              <select class="filter-select" disabled>
+                <option>전체 상태</option>
+                <option>정상출근</option>
+                <option>지각</option>
+                <option>조퇴</option>
+                <option>결근</option>
+                <option>휴가</option>
+              </select>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>부서</th>
+                    <th>팀</th>
+                    <th>직급</th>
+                    <th>성명</th>
+                    <th>출근시간</th>
+                    <th>퇴근시간</th>
+                    <th>근무시간</th>
+                    <th>상태</th>
+                  </tr>
+                </thead>
+                <tbody id="attendTableBody">
+                  <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted);">출/퇴근 데이터 연동 예정 (SharePoint List)</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 휴가 사용 현황 -->
+          <div class="table-card">
+            <div class="table-header">
+              <div class="table-title">연차 사용 현황 (이번달)</div>
+              <div class="search-box"><span>🔍</span><input type="text" id="leaveSearch" placeholder="이름 검색..." disabled></div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>부서</th>
+                    <th>성명</th>
+                    <th>휴가유형</th>
+                    <th>시작일</th>
+                    <th>종료일</th>
+                    <th>일수</th>
+                    <th>잔여 연차</th>
+                    <th>승인상태</th>
+                  </tr>
+                </thead>
+                <tbody id="leaveTableBody">
+                  <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted);">휴가 데이터 연동 예정 (SharePoint List)</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
 </div>
 
 <script>
@@ -486,6 +591,7 @@ async function loadAll() {
   try {
     const token = await getToken();
     await Promise.all([loadHR(token), loadRecruit(token)]);
+    renderAttend();
     const now = new Date();
     document.getElementById('lastUpdated').textContent =
       `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')} 업데이트`;
@@ -740,6 +846,45 @@ function renderOrgNode(node, level) {
   return wrap;
 }
 
+// ===== ATTENDANCE (placeholder, dummy data) =====
+function renderAttend() {
+  // KPI 더미 (재직 인원 기반으로 추정값 표시)
+  const totalEmp = (hrData || []).filter(x => {
+    const f = x.fields || {};
+    return (f.재직상태 || f.Status || '재직') === '재직';
+  }).length;
+
+  if (totalEmp > 0) {
+    const inCount = Math.max(0, totalEmp - Math.floor(totalEmp * 0.08));
+    const offCount = Math.floor(totalEmp * 0.05);
+    document.getElementById('kpi-attend-in').innerHTML = `${inCount}<span class="kpi-unit">명</span>`;
+    document.getElementById('kpi-attend-in-sub').textContent = `재직 ${totalEmp}명 중`;
+    document.getElementById('kpi-attend-issue').innerHTML = `2<span class="kpi-unit">건</span>`;
+    document.getElementById('kpi-attend-off').innerHTML = `${offCount}<span class="kpi-unit">명</span>`;
+    document.getElementById('kpi-attend-hours').innerHTML = `42.5<span class="kpi-unit">h</span>`;
+  }
+
+  // 이번주 출/퇴근 차트 (더미)
+  const weekLabels = ['월', '화', '수', '목', '금'];
+  const weekData = [
+    Math.max(0, totalEmp - 3),
+    Math.max(0, totalEmp - 2),
+    Math.max(0, totalEmp - 4),
+    Math.max(0, totalEmp - 1),
+    Math.max(0, totalEmp - 3)
+  ];
+  if (totalEmp > 0) {
+    renderChart('attendWeekChart', 'bar', weekLabels, weekData, ['#0f4c81','#0f4c81','#0f4c81','#0f4c81','#0f4c81']);
+  }
+
+  // 휴가 유형별 사용 차트 (더미)
+  renderChart('leaveTypeChart', 'doughnut',
+    ['연차', '반차', '경조사', '병가', '특별휴가'],
+    [12, 5, 2, 3, 1],
+    ['#0f4c81','#1a6bb5','#00b4d8','#f4a261','#10b981']
+  );
+}
+
 // ===== UTILS =====
 function renderChart(id, type, labels, data, colors) {
   if (charts[id]) charts[id].destroy();
@@ -801,7 +946,7 @@ function showTab(tab, el) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById(`tab-${tab}`).classList.add('active');
   el.classList.add('active');
-  document.getElementById('pageTitle').textContent = {hr:'인원현황',recruit:'채용현황',org:'조직도',admin:'총무관리'}[tab];
+  document.getElementById('pageTitle').textContent = {hr:'인원현황',recruit:'채용현황',org:'조직도',admin:'총무관리',attend:'근태관리'}[tab];
 }
 
 init();
