@@ -114,6 +114,19 @@
   .filter-bar { display: flex; gap: 10px; padding: 12px 20px 0; flex-wrap: wrap; }
   .filter-select { padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 13px; color: var(--text); font-family: inherit; outline: none; cursor: pointer; }
 
+  /* 근태관리 - 사이트 토글 */
+  .site-btn { padding: 7px 14px; border: none; background: var(--surface); font-size: 13px; color: var(--text-muted); font-family: inherit; cursor: pointer; transition: all 0.15s; border-right: 1px solid var(--border); }
+  .site-btn:last-child { border-right: none; }
+  .site-btn:hover { background: var(--surface2); }
+  .site-btn.active { background: var(--primary); color: #fff; font-weight: 600; }
+  /* 근태 상태 배지 */
+  .att-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .att-ontime { background: #d1fae5; color: #065f46; }
+  .att-late { background: #fef3c7; color: #92400e; }
+  .att-early { background: #fed7aa; color: #9a3412; }
+  .att-missing { background: #fee2e2; color: #991b1b; }
+  .att-absent { background: #e2e8f0; color: #475569; }
+
   /* PAGINATION */
   .pagination { display: flex; justify-content: center; gap: 4px; padding: 16px; border-top: 1px solid var(--border); }
   .page-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); cursor: pointer; font-size: 13px; transition: all 0.15s; }
@@ -390,57 +403,81 @@
       <!-- ===== 근태관리 탭 ===== -->
       <div class="tab-panel" id="tab-attend">
         <div id="attend-content">
+
+          <!-- 사업장 + 날짜 선택 바 -->
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:12px;color:var(--text-muted);font-weight:500;">사업장</span>
+              <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+                <button class="site-btn active" data-site="all" onclick="changeSite('all')">전체</button>
+                <button class="site-btn" data-site="head" onclick="changeSite('head')">본사</button>
+                <button class="site-btn" data-site="hwaseong" onclick="changeSite('hwaseong')">화성</button>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:12px;color:var(--text-muted);font-weight:500;">기준일</span>
+              <input type="date" id="attendDate" onchange="renderAttend()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;">
+            </div>
+            <div style="margin-left:auto;font-size:11px;color:var(--text-muted);">
+              <span id="attendDataNote">📁 화성 SECOM 샘플 데이터 (2026/04) · SharePoint 연동 예정</span>
+            </div>
+          </div>
+
           <!-- KPI -->
           <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;">
             <div class="kpi-card">
-              <div class="kpi-label">오늘 출근</div>
-              <div class="kpi-value" style="font-size:24px;" id="kpi-attend-in">-<span class="kpi-unit">명</span></div>
-              <div class="kpi-sub" id="kpi-attend-in-sub">데이터 연동 예정</div>
+              <div class="kpi-label">정시출근</div>
+              <div class="kpi-value" style="font-size:24px;color:var(--success);" id="kpi-attend-ontime">-<span class="kpi-unit">명</span></div>
+              <div class="kpi-sub" id="kpi-attend-ontime-sub">정시 출근 인원</div>
             </div>
             <div class="kpi-card">
-              <div class="kpi-label">근태 이상</div>
-              <div class="kpi-value" style="font-size:24px;" id="kpi-attend-issue">-<span class="kpi-unit">건</span></div>
-              <div class="kpi-sub">지각/조퇴/결근</div>
+              <div class="kpi-label">지각/조퇴</div>
+              <div class="kpi-value" style="font-size:24px;color:var(--warning);" id="kpi-attend-late">-<span class="kpi-unit">건</span></div>
+              <div class="kpi-sub" id="kpi-attend-late-sub">근태 이상</div>
             </div>
             <div class="kpi-card">
-              <div class="kpi-label">오늘 휴가자</div>
-              <div class="kpi-value" style="font-size:24px;" id="kpi-attend-off">-<span class="kpi-unit">명</span></div>
-              <div class="kpi-sub">연차/반차/특별휴가</div>
+              <div class="kpi-label">미찍음</div>
+              <div class="kpi-value" style="font-size:24px;color:var(--danger);" id="kpi-attend-missing">-<span class="kpi-unit">건</span></div>
+              <div class="kpi-sub" id="kpi-attend-missing-sub">보정 필요</div>
             </div>
             <div class="kpi-card">
-              <div class="kpi-label">이번달 평균 근무시간</div>
-              <div class="kpi-value" style="font-size:24px;" id="kpi-attend-hours">-<span class="kpi-unit">h</span></div>
-              <div class="kpi-sub">주 40h 기준</div>
+              <div class="kpi-label">미출근</div>
+              <div class="kpi-value" style="font-size:24px;" id="kpi-attend-absent">-<span class="kpi-unit">명</span></div>
+              <div class="kpi-sub" id="kpi-attend-absent-sub">휴가/외근/결근</div>
             </div>
           </div>
 
           <!-- 차트 영역 -->
           <div class="charts-row" style="grid-template-columns:1fr 1fr;margin-bottom:16px;">
             <div class="chart-card">
-              <div class="chart-title">이번주 출/퇴근 현황</div>
-              <div class="chart-wrap"><canvas id="attendWeekChart"></canvas></div>
+              <div class="chart-title">시간대별 출근 분포</div>
+              <div class="chart-wrap"><canvas id="attendHourChart"></canvas></div>
             </div>
             <div class="chart-card">
-              <div class="chart-title">휴가 유형별 사용</div>
-              <div class="chart-wrap"><canvas id="leaveTypeChart"></canvas></div>
+              <div class="chart-title">최근 7일 출근율</div>
+              <div class="chart-wrap"><canvas id="attendWeekChart"></canvas></div>
             </div>
           </div>
 
+          <!-- 보정 안내 배너 (미찍음 있을 때만 표시) -->
+          <div id="correctionBanner" style="display:none;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#92400e;">
+            <strong>⚠️ 보정 필요 <span id="correctionCount">0</span>건</strong> · 지문 미인식 케이스입니다. 추후 SharePoint 보정 List에서 휴가/외근/정상으로 수동 분류할 예정입니다.
+          </div>
+
           <!-- 출/퇴근 현황 테이블 -->
-          <div class="table-card" style="margin-bottom:16px;">
+          <div class="table-card">
             <div class="table-header">
-              <div class="table-title">오늘 출/퇴근 현황</div>
-              <div class="search-box"><span>🔍</span><input type="text" id="attendSearch" placeholder="이름, 부서 검색..." disabled></div>
+              <div class="table-title">출/퇴근 상세 (<span id="attendDateLabel">-</span>)</div>
+              <div class="search-box"><span>🔍</span><input type="text" id="attendSearch" placeholder="이름 검색..." oninput="renderAttendTable()"></div>
             </div>
             <div class="filter-bar">
-              <select class="filter-select" disabled><option>전체 부서</option></select>
-              <select class="filter-select" disabled>
-                <option>전체 상태</option>
-                <option>정상출근</option>
-                <option>지각</option>
-                <option>조퇴</option>
-                <option>결근</option>
-                <option>휴가</option>
+              <select class="filter-select" id="attendStatusFilter" onchange="renderAttendTable()">
+                <option value="">전체 상태</option>
+                <option value="정시출근">정시출근</option>
+                <option value="지각">지각</option>
+                <option value="조퇴">조퇴</option>
+                <option value="미찍음">미찍음</option>
+                <option value="미출근">미출근</option>
               </select>
             </div>
             <div class="table-wrap">
@@ -448,52 +485,25 @@
                 <thead>
                   <tr>
                     <th>No</th>
-                    <th>부서</th>
-                    <th>팀</th>
-                    <th>직급</th>
+                    <th>사업장</th>
+                    <th>사번</th>
                     <th>성명</th>
-                    <th>출근시간</th>
-                    <th>퇴근시간</th>
-                    <th>근무시간</th>
+                    <th>출근</th>
+                    <th>퇴근</th>
+                    <th>인정시간</th>
                     <th>상태</th>
                   </tr>
                 </thead>
-                <tbody id="attendTableBody">
-                  <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted);">출/퇴근 데이터 연동 예정 (SharePoint List)</td></tr>
-                </tbody>
+                <tbody id="attendTableBody"></tbody>
               </table>
             </div>
           </div>
 
-          <!-- 휴가 사용 현황 -->
-          <div class="table-card">
-            <div class="table-header">
-              <div class="table-title">연차 사용 현황 (이번달)</div>
-              <div class="search-box"><span>🔍</span><input type="text" id="leaveSearch" placeholder="이름 검색..." disabled></div>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>No</th>
-                    <th>부서</th>
-                    <th>성명</th>
-                    <th>휴가유형</th>
-                    <th>시작일</th>
-                    <th>종료일</th>
-                    <th>일수</th>
-                    <th>잔여 연차</th>
-                    <th>승인상태</th>
-                  </tr>
-                </thead>
-                <tbody id="leaveTableBody">
-                  <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted);">휴가 데이터 연동 예정 (SharePoint List)</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
       </div>
+
+    </div>
+  </main>
 </div>
 
 <script>
@@ -846,43 +856,181 @@ function renderOrgNode(node, level) {
   return wrap;
 }
 
-// ===== ATTENDANCE (placeholder, dummy data) =====
+// ===== ATTENDANCE =====
+// 화성 SECOM 샘플 데이터 (2026/04). 추후 SharePoint List로 교체.
+const ATTEND_SAMPLE_HWASEONG = [{"id":"0001","name":"김라영","date":"2026-04-01","in":"08:46","out":"17:01","recognized":"00:14:00"},{"id":"0001","name":"김라영","date":"2026-04-02","in":"08:47","out":"17:03","recognized":"00:13:00"},{"id":"0001","name":"김라영","date":"2026-04-03","in":"08:40","out":"17:04","recognized":"00:20:00"},{"id":"0001","name":"김라영","date":"2026-04-04","in":null,"out":null,"recognized":"00:00:00"},{"id":"0001","name":"김라영","date":"2026-04-05","in":null,"out":null,"recognized":"00:00:00"},{"id":"0001","name":"김라영","date":"2026-04-06","in":"08:49","out":"17:04","recognized":"00:11:00"},{"id":"0001","name":"김라영","date":"2026-04-07","in":"08:43","out":"17:04","recognized":"00:17:00"},{"id":"0001","name":"김라영","date":"2026-04-08","in":null,"out":null,"recognized":"00:00:00"},{"id":"0001","name":"김라영","date":"2026-04-09","in":"08:44","out":"17:03","recognized":"00:16:00"},{"id":"0001","name":"김라영","date":"2026-04-10","in":"08:47","out":"17:05","recognized":"00:13:00"},{"id":"0001","name":"김라영","date":"2026-04-11","in":null,"out":null,"recognized":"00:00:00"},{"id":"0001","name":"김라영","date":"2026-04-12","in":null,"out":null,"recognized":"00:00:00"},{"id":"0001","name":"김라영","date":"2026-04-13","in":"08:44","out":"17:14","recognized":"00:16:00"},{"id":"0001","name":"김라영","date":"2026-04-14","in":null,"out":"17:05","recognized":"00:00:00"},{"id":"0001","name":"김라영","date":"2026-04-15","in":"08:43","out":"17:03","recognized":"00:17:00"},{"id":"0001","name":"김라영","date":"2026-04-16","in":"08:43","out":"17:05","recognized":"00:17:00"},{"id":"0001","name":"김라영","date":"2026-04-17","in":"08:39","out":"17:00","recognized":"00:21:00"},{"id":"0001","name":"김라영","date":"2026-04-18","in":null,"out":null,"recognized":"00:00:00"},{"id":"0001","name":"김라영","date":"2026-04-19","in":null,"out":null,"recognized":"00:00:00"},{"id":"0001","name":"김라영","date":"2026-04-20","in":"08:47","out":"17:05","recognized":"00:13:00"},{"id":"0001","name":"김라영","date":"2026-04-21","in":"08:47","out":"17:08","recognized":"00:13:00"},{"id":"0001","name":"김라영","date":"2026-04-22","in":"08:45","out":"17:04","recognized":"00:15:00"},{"id":"0001","name":"김라영","date":"2026-04-23","in":"08:40","out":"17:08","recognized":"00:20:00"},{"id":"0001","name":"김라영","date":"2026-04-24","in":"08:46","out":"17:03","recognized":"00:14:00"},{"id":"0001","name":"김라영","date":"2026-04-25","in":null,"out":null,"recognized":"00:00:00"},{"id":"0001","name":"김라영","date":"2026-04-26","in":null,"out":null,"recognized":"00:00:00"},{"id":"0001","name":"김라영","date":"2026-04-27","in":"08:51","out":"17:04","recognized":"00:09:00"},{"id":"0001","name":"김라영","date":"2026-04-28","in":"08:47","out":"17:00","recognized":"00:13:00"},{"id":"0001","name":"김라영","date":"2026-04-29","in":"08:43","out":"17:04","recognized":"00:17:00"},{"id":"0001","name":"김라영","date":"2026-04-30","in":null,"out":null,"recognized":"00:00:00"},{"id":"0002","name":"김일두","date":"2026-04-01","in":"06:45","out":null,"recognized":"02:15:00"},{"id":"0002","name":"김일두","date":"2026-04-02","in":null,"out":null,"recognized":"00:00:00"},{"id":"0002","name":"김일두","date":"2026-04-03","in":"06:52","out":null,"recognized":"02:08:00"},{"id":"0002","name":"김일두","date":"2026-04-04","in":null,"out":null,"recognized":"00:00:00"},{"id":"0002","name":"김일두","date":"2026-04-05","in":null,"out":null,"recognized":"00:00:00"},{"id":"0002","name":"김일두","date":"2026-04-06","in":"06:29","out":null,"recognized":"02:31:00"},{"id":"0002","name":"김일두","date":"2026-04-07","in":null,"out":null,"recognized":"00:00:00"},{"id":"0002","name":"김일두","date":"2026-04-08","in":"06:26","out":null,"recognized":"02:34:00"},{"id":"0002","name":"김일두","date":"2026-04-09","in":null,"out":null,"recognized":"00:00:00"},{"id":"0002","name":"김일두","date":"2026-04-10","in":"06:26","out":null,"recognized":"02:34:00"},{"id":"0002","name":"김일두","date":"2026-04-11","in":null,"out":null,"recognized":"00:00:00"},{"id":"0002","name":"김일두","date":"2026-04-12","in":null,"out":null,"recognized":"00:00:00"},{"id":"0002","name":"김일두","date":"2026-04-13","in":"06:27","out":null,"recognized":"02:33:00"},{"id":"0002","name":"김일두","date":"2026-04-14","in":null,"out":null,"recognized":"00:00:00"},{"id":"0002","name":"김일두","date":"2026-04-15","in":"06:29","out":null,"recognized":"02:31:00"},{"id":"0002","name":"김일두","date":"2026-04-16","in":null,"out":null,"recognized":"00:00:00"},{"id":"0002","name":"김일두","date":"2026-04-17","in":"06:24","out":null,"recognized":"02:36:00"},{"id":"0002","name":"김일두","date":"2026-04-18","in":null,"out":null,"recognized":"00:00:00"},{"id":"0002","name":"김일두","date":"2026-04-19","in":null,"out":null,"recognized":"00:00:00"},{"id":"0002","name":"김일두","date":"2026-04-20","in":"06:25","out":null,"recognized":"02:35:00"},{"id":"0002","name":"김일두","date":"2026-04-21","in":"06:27","out":null,"recognized":"02:33:00"},{"id":"0002","name":"김일두","date":"2026-04-22","in":"06:22","out":null,"recognized":"02:38:00"},{"id":"0002","name":"김일두","date":"2026-04-23","in":null,"out":null,"recognized":"00:00:00"},{"id":"0002","name":"김일두","date":"2026-04-24","in":"06:21","out":null,"recognized":"02:39:00"},{"id":"0002","name":"김일두","date":"2026-04-25","in":null,"out":null,"recognized":"00:00:00"},{"id":"0002","name":"김일두","date":"2026-04-26","in":null,"out":null,"recognized":"00:00:00"},{"id":"0002","name":"김일두","date":"2026-04-27","in":"06:17","out":null,"recognized":"02:43:00"},{"id":"0002","name":"김일두","date":"2026-04-28","in":"06:21","out":null,"recognized":"02:39:00"},{"id":"0002","name":"김일두","date":"2026-04-29","in":null,"out":null,"recognized":"00:00:00"},{"id":"0002","name":"김일두","date":"2026-04-30","in":null,"out":null,"recognized":"00:00:00"},{"id":"0003","name":"강동헌","date":"2026-04-01","in":"06:46","out":null,"recognized":"02:14:00"},{"id":"0003","name":"강동헌","date":"2026-04-02","in":"06:44","out":null,"recognized":"02:16:00"},{"id":"0003","name":"강동헌","date":"2026-04-03","in":"06:42","out":null,"recognized":"02:18:00"},{"id":"0003","name":"강동헌","date":"2026-04-04","in":null,"out":null,"recognized":"00:00:00"},{"id":"0003","name":"강동헌","date":"2026-04-05","in":null,"out":null,"recognized":"00:00:00"},{"id":"0003","name":"강동헌","date":"2026-04-06","in":"06:43","out":null,"recognized":"02:17:00"},{"id":"0003","name":"강동헌","date":"2026-04-07","in":"06:39","out":null,"recognized":"02:21:00"},{"id":"0003","name":"강동헌","date":"2026-04-08","in":"06:40","out":null,"recognized":"02:20:00"},{"id":"0003","name":"강동헌","date":"2026-04-09","in":"06:31","out":null,"recognized":"02:29:00"},{"id":"0003","name":"강동헌","date":"2026-04-10","in":"06:46","out":null,"recognized":"02:14:00"},{"id":"0003","name":"강동헌","date":"2026-04-11","in":null,"out":null,"recognized":"00:00:00"},{"id":"0003","name":"강동헌","date":"2026-04-12","in":null,"out":null,"recognized":"00:00:00"},{"id":"0003","name":"강동헌","date":"2026-04-13","in":"06:42","out":null,"recognized":"02:18:00"},{"id":"0003","name":"강동헌","date":"2026-04-14","in":"06:45","out":null,"recognized":"02:15:00"},{"id":"0003","name":"강동헌","date":"2026-04-15","in":"06:40","out":null,"recognized":"02:20:00"},{"id":"0003","name":"강동헌","date":"2026-04-16","in":"06:38","out":"16:17","recognized":"02:22:00"},{"id":"0003","name":"강동헌","date":"2026-04-17","in":"06:40","out":null,"recognized":"02:20:00"},{"id":"0003","name":"강동헌","date":"2026-04-18","in":"07:12","out":null,"recognized":"00:00:00"},{"id":"0003","name":"강동헌","date":"2026-04-19","in":null,"out":null,"recognized":"00:00:00"},{"id":"0003","name":"강동헌","date":"2026-04-20","in":"06:54","out":null,"recognized":"02:06:00"},{"id":"0003","name":"강동헌","date":"2026-04-21","in":"06:41","out":null,"recognized":"02:19:00"},{"id":"0003","name":"강동헌","date":"2026-04-22","in":"06:34","out":null,"recognized":"02:26:00"},{"id":"0003","name":"강동헌","date":"2026-04-23","in":"06:38","out":"16:17","recognized":"02:22:00"},{"id":"0003","name":"강동헌","date":"2026-04-24","in":"06:42","out":null,"recognized":"02:18:00"},{"id":"0003","name":"강동헌","date":"2026-04-25","in":null,"out":null,"recognized":"00:00:00"},{"id":"0003","name":"강동헌","date":"2026-04-26","in":null,"out":null,"recognized":"00:00:00"},{"id":"0003","name":"강동헌","date":"2026-04-27","in":"06:47","out":null,"recognized":"02:13:00"},{"id":"0003","name":"강동헌","date":"2026-04-28","in":"06:43","out":null,"recognized":"02:17:00"},{"id":"0003","name":"강동헌","date":"2026-04-29","in":"06:40","out":null,"recognized":"02:20:00"},{"id":"0003","name":"강동헌","date":"2026-04-30","in":"07:00","out":"16:31","recognized":"02:00:00"},{"id":"0004","name":"김민정","date":"2026-04-01","in":"07:06","out":null,"recognized":"01:54:00"},{"id":"0004","name":"김민정","date":"2026-04-02","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-03","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-04","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-05","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-06","in":"07:10","out":null,"recognized":"01:50:00"},{"id":"0004","name":"김민정","date":"2026-04-07","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-08","in":"07:00","out":null,"recognized":"02:00:00"},{"id":"0004","name":"김민정","date":"2026-04-09","in":"07:05","out":null,"recognized":"01:55:00"},{"id":"0004","name":"김민정","date":"2026-04-10","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-11","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-12","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-13","in":"07:16","out":null,"recognized":"01:44:00"},{"id":"0004","name":"김민정","date":"2026-04-14","in":"07:16","out":null,"recognized":"01:44:00"},{"id":"0004","name":"김민정","date":"2026-04-15","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-16","in":"07:16","out":null,"recognized":"01:44:00"},{"id":"0004","name":"김민정","date":"2026-04-17","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-18","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-19","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-20","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-21","in":"07:14","out":null,"recognized":"01:46:00"},{"id":"0004","name":"김민정","date":"2026-04-22","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-23","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-24","in":"07:17","out":null,"recognized":"01:43:00"},{"id":"0004","name":"김민정","date":"2026-04-25","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-26","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-27","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-28","in":"07:24","out":null,"recognized":"01:36:00"},{"id":"0004","name":"김민정","date":"2026-04-29","in":null,"out":null,"recognized":"00:00:00"},{"id":"0004","name":"김민정","date":"2026-04-30","in":null,"out":null,"recognized":"00:00:00"},{"id":"0005","name":"이부자","date":"2026-04-01","in":"06:41","out":"16:05","recognized":"02:19:00"},{"id":"0005","name":"이부자","date":"2026-04-02","in":"06:35","out":"16:05","recognized":"02:25:00"},{"id":"0005","name":"이부자","date":"2026-04-03","in":"06:55","out":"16:09","recognized":"02:05:00"},{"id":"0005","name":"이부자","date":"2026-04-04","in":null,"out":null,"recognized":"00:00:00"},{"id":"0005","name":"이부자","date":"2026-04-05","in":null,"out":null,"recognized":"00:00:00"},{"id":"0005","name":"이부자","date":"2026-04-06","in":"06:49","out":"16:03","recognized":"02:11:00"},{"id":"0005","name":"이부자","date":"2026-04-07","in":"06:41","out":"16:06","recognized":"02:19:00"},{"id":"0005","name":"이부자","date":"2026-04-08","in":"06:44","out":"16:11","recognized":"02:16:00"},{"id":"0005","name":"이부자","date":"2026-04-09","in":"06:33","out":null,"recognized":"02:27:00"},{"id":"0005","name":"이부자","date":"2026-04-10","in":"06:27","out":null,"recognized":"02:33:00"},{"id":"0005","name":"이부자","date":"2026-04-11","in":null,"out":null,"recognized":"00:00:00"},{"id":"0005","name":"이부자","date":"2026-04-12","in":null,"out":null,"recognized":"00:00:00"},{"id":"0005","name":"이부자","date":"2026-04-13","in":"06:56","out":"16:05","recognized":"02:04:00"},{"id":"0005","name":"이부자","date":"2026-04-14","in":"06:49","out":"16:06","recognized":"02:11:00"},{"id":"0005","name":"이부자","date":"2026-04-15","in":"06:37","out":"16:05","recognized":"02:23:00"},{"id":"0005","name":"이부자","date":"2026-04-16","in":"06:48","out":"16:03","recognized":"02:12:00"},{"id":"0005","name":"이부자","date":"2026-04-17","in":"07:01","out":"16:09","recognized":"01:59:00"},{"id":"0005","name":"이부자","date":"2026-04-18","in":null,"out":null,"recognized":"00:00:00"},{"id":"0005","name":"이부자","date":"2026-04-19","in":null,"out":null,"recognized":"00:00:00"},{"id":"0005","name":"이부자","date":"2026-04-20","in":"06:43","out":"16:09","recognized":"02:17:00"},{"id":"0005","name":"이부자","date":"2026-04-21","in":"06:51","out":"16:09","recognized":"02:09:00"},{"id":"0005","name":"이부자","date":"2026-04-22","in":"06:46","out":"16:07","recognized":"02:14:00"},{"id":"0005","name":"이부자","date":"2026-04-23","in":"06:56","out":"16:12","recognized":"02:04:00"},{"id":"0005","name":"이부자","date":"2026-04-24","in":"06:36","out":"16:07","recognized":"02:24:00"},{"id":"0005","name":"이부자","date":"2026-04-25","in":null,"out":null,"recognized":"00:00:00"},{"id":"0005","name":"이부자","date":"2026-04-26","in":null,"out":null,"recognized":"00:00:00"},{"id":"0005","name":"이부자","date":"2026-04-27","in":"06:54","out":"16:10","recognized":"02:06:00"},{"id":"0005","name":"이부자","date":"2026-04-28","in":"06:29","out":"16:11","recognized":"02:31:00"},{"id":"0005","name":"이부자","date":"2026-04-29","in":"06:53","out":"16:10","recognized":"02:07:00"},{"id":"0005","name":"이부자","date":"2026-04-30","in":"06:58","out":"16:11","recognized":"02:02:00"},{"id":"0006","name":"최훈","date":"2026-04-01","in":"06:04","out":"16:05","recognized":"02:56:00"},{"id":"0006","name":"최훈","date":"2026-04-02","in":"06:12","out":"16:22","recognized":"02:48:00"},{"id":"0006","name":"최훈","date":"2026-04-03","in":"06:07","out":"16:30","recognized":"02:53:00"},{"id":"0006","name":"최훈","date":"2026-04-04","in":null,"out":null,"recognized":"00:00:00"},{"id":"0006","name":"최훈","date":"2026-04-05","in":null,"out":null,"recognized":"00:00:00"},{"id":"0006","name":"최훈","date":"2026-04-06","in":"06:01","out":"16:12","recognized":"02:59:00"},{"id":"0006","name":"최훈","date":"2026-04-07","in":"06:01","out":"16:16","recognized":"02:59:00"},{"id":"0006","name":"최훈","date":"2026-04-08","in":"06:03","out":"17:24","recognized":"02:57:00"},{"id":"0006","name":"최훈","date":"2026-04-09","in":"06:03","out":"16:13","recognized":"02:57:00"},{"id":"0006","name":"최훈","date":"2026-04-10","in":"06:03","out":null,"recognized":"02:57:00"},{"id":"0006","name":"최훈","date":"2026-04-11","in":null,"out":null,"recognized":"00:00:00"},{"id":"0006","name":"최훈","date":"2026-04-12","in":null,"out":null,"recognized":"00:00:00"},{"id":"0006","name":"최훈","date":"2026-04-13","in":"06:02","out":"16:28","recognized":"02:58:00"},{"id":"0006","name":"최훈","date":"2026-04-14","in":"06:05","out":"16:49","recognized":"02:55:00"},{"id":"0006","name":"최훈","date":"2026-04-15","in":"06:04","out":"16:17","recognized":"02:56:00"},{"id":"0006","name":"최훈","date":"2026-04-16","in":"06:02","out":"16:17","recognized":"02:58:00"},{"id":"0006","name":"최훈","date":"2026-04-17","in":"06:01","out":"16:26","recognized":"02:59:00"},{"id":"0006","name":"최훈","date":"2026-04-18","in":null,"out":null,"recognized":"00:00:00"},{"id":"0006","name":"최훈","date":"2026-04-19","in":null,"out":null,"recognized":"00:00:00"},{"id":"0006","name":"최훈","date":"2026-04-20","in":"06:08","out":"16:48","recognized":"02:52:00"},{"id":"0006","name":"최훈","date":"2026-04-21","in":"06:05","out":"17:22","recognized":"02:55:00"},{"id":"0006","name":"최훈","date":"2026-04-22","in":"06:02","out":"16:15","recognized":"02:58:00"},{"id":"0006","name":"최훈","date":"2026-04-23","in":"06:01","out":"16:06","recognized":"02:59:00"},{"id":"0006","name":"최훈","date":"2026-04-24","in":"06:02","out":"16:16","recognized":"02:58:00"},{"id":"0006","name":"최훈","date":"2026-04-25","in":null,"out":null,"recognized":"00:00:00"},{"id":"0006","name":"최훈","date":"2026-04-26","in":null,"out":null,"recognized":"00:00:00"},{"id":"0006","name":"최훈","date":"2026-04-27","in":"06:01","out":"16:10","recognized":"02:59:00"},{"id":"0006","name":"최훈","date":"2026-04-28","in":"06:01","out":"16:29","recognized":"02:59:00"},{"id":"0006","name":"최훈","date":"2026-04-29","in":"06:01","out":"16:29","recognized":"02:59:00"},{"id":"0006","name":"최훈","date":"2026-04-30","in":"06:00","out":"16:47","recognized":"03:00:00"},{"id":"0007","name":"강신기","date":"2026-04-01","in":"06:48","out":"16:01","recognized":"02:12:00"},{"id":"0007","name":"강신기","date":"2026-04-02","in":"06:48","out":"16:03","recognized":"02:12:00"},{"id":"0007","name":"강신기","date":"2026-04-03","in":"06:49","out":"16:03","recognized":"02:11:00"},{"id":"0007","name":"강신기","date":"2026-04-04","in":null,"out":null,"recognized":"00:00:00"},{"id":"0007","name":"강신기","date":"2026-04-05","in":null,"out":null,"recognized":"00:00:00"},{"id":"0007","name":"강신기","date":"2026-04-06","in":"06:51","out":"16:02","recognized":"02:09:00"},{"id":"0007","name":"강신기","date":"2026-04-07","in":"06:48","out":"16:04","recognized":"02:12:00"},{"id":"0007","name":"강신기","date":"2026-04-08","in":"06:49","out":"16:04","recognized":"02:11:00"},{"id":"0007","name":"강신기","date":"2026-04-09","in":"06:53","out":"16:01","recognized":"02:07:00"},{"id":"0007","name":"강신기","date":"2026-04-10","in":"06:49","out":null,"recognized":"02:11:00"},{"id":"0007","name":"강신기","date":"2026-04-11","in":null,"out":null,"recognized":"00:00:00"},{"id":"0007","name":"강신기","date":"2026-04-12","in":null,"out":null,"recognized":"00:00:00"},{"id":"0007","name":"강신기","date":"2026-04-13","in":"06:47","out":"16:02","recognized":"02:13:00"},{"id":"0007","name":"강신기","date":"2026-04-14","in":"06:50","out":"16:04","recognized":"02:10:00"},{"id":"0007","name":"강신기","date":"2026-04-15","in":"06:45","out":"16:01","recognized":"02:15:00"},{"id":"0007","name":"강신기","date":"2026-04-16","in":"06:46","out":"16:03","recognized":"02:14:00"},{"id":"0007","name":"강신기","date":"2026-04-17","in":"06:49","out":"16:02","recognized":"02:11:00"},{"id":"0007","name":"강신기","date":"2026-04-18","in":null,"out":null,"recognized":"00:00:00"},{"id":"0007","name":"강신기","date":"2026-04-19","in":null,"out":null,"recognized":"00:00:00"},{"id":"0007","name":"강신기","date":"2026-04-20","in":"06:46","out":"16:02","recognized":"02:14:00"},{"id":"0007","name":"강신기","date":"2026-04-21","in":"06:47","out":"16:02","recognized":"02:13:00"},{"id":"0007","name":"강신기","date":"2026-04-22","in":"06:51","out":"16:03","recognized":"02:09:00"},{"id":"0007","name":"강신기","date":"2026-04-23","in":"06:51","out":"16:05","recognized":"02:09:00"},{"id":"0007","name":"강신기","date":"2026-04-24","in":"06:49","out":"16:02","recognized":"02:11:00"},{"id":"0007","name":"강신기","date":"2026-04-25","in":null,"out":null,"recognized":"00:00:00"},{"id":"0007","name":"강신기","date":"2026-04-26","in":null,"out":null,"recognized":"00:00:00"},{"id":"0007","name":"강신기","date":"2026-04-27","in":"06:47","out":"16:03","recognized":"02:13:00"},{"id":"0007","name":"강신기","date":"2026-04-28","in":"06:48","out":"16:05","recognized":"02:12:00"},{"id":"0007","name":"강신기","date":"2026-04-29","in":"06:50","out":"16:03","recognized":"02:10:00"},{"id":"0007","name":"강신기","date":"2026-04-30","in":"06:50","out":"16:07","recognized":"02:10:00"},{"id":"0008","name":"이찬기","date":"2026-04-01","in":"06:04","out":"16:01","recognized":"02:56:00"},{"id":"0008","name":"이찬기","date":"2026-04-02","in":"06:34","out":"16:04","recognized":"02:26:00"},{"id":"0008","name":"이찬기","date":"2026-04-03","in":"06:02","out":"16:04","recognized":"02:58:00"},{"id":"0008","name":"이찬기","date":"2026-04-04","in":null,"out":null,"recognized":"00:00:00"},{"id":"0008","name":"이찬기","date":"2026-04-05","in":null,"out":null,"recognized":"00:00:00"},{"id":"0008","name":"이찬기","date":"2026-04-06","in":"06:01","out":"16:06","recognized":"02:59:00"},{"id":"0008","name":"이찬기","date":"2026-04-07","in":"06:01","out":"16:02","recognized":"02:59:00"},{"id":"0008","name":"이찬기","date":"2026-04-08","in":"06:00","out":"16:03","recognized":"03:00:00"},{"id":"0008","name":"이찬기","date":"2026-04-09","in":"06:02","out":"16:02","recognized":"02:58:00"},{"id":"0008","name":"이찬기","date":"2026-04-10","in":"06:00","out":null,"recognized":"03:00:00"},{"id":"0008","name":"이찬기","date":"2026-04-11","in":null,"out":null,"recognized":"00:00:00"},{"id":"0008","name":"이찬기","date":"2026-04-12","in":null,"out":null,"recognized":"00:00:00"},{"id":"0008","name":"이찬기","date":"2026-04-13","in":"06:01","out":"16:04","recognized":"02:59:00"},{"id":"0008","name":"이찬기","date":"2026-04-14","in":"06:00","out":"16:01","recognized":"03:00:00"},{"id":"0008","name":"이찬기","date":"2026-04-15","in":"06:00","out":"16:02","recognized":"03:00:00"},{"id":"0008","name":"이찬기","date":"2026-04-16","in":"06:00","out":"16:01","recognized":"03:00:00"},{"id":"0008","name":"이찬기","date":"2026-04-17","in":"06:01","out":"16:01","recognized":"02:59:00"},{"id":"0008","name":"이찬기","date":"2026-04-18","in":null,"out":null,"recognized":"00:00:00"},{"id":"0008","name":"이찬기","date":"2026-04-19","in":null,"out":null,"recognized":"00:00:00"},{"id":"0008","name":"이찬기","date":"2026-04-20","in":"06:01","out":"16:03","recognized":"02:59:00"},{"id":"0008","name":"이찬기","date":"2026-04-21","in":"06:01","out":"16:05","recognized":"02:59:00"},{"id":"0008","name":"이찬기","date":"2026-04-22","in":"06:01","out":"16:01","recognized":"02:59:00"},{"id":"0008","name":"이찬기","date":"2026-04-23","in":"06:01","out":"16:03","recognized":"02:59:00"},{"id":"0008","name":"이찬기","date":"2026-04-24","in":"06:02","out":"16:02","recognized":"02:58:00"},{"id":"0008","name":"이찬기","date":"2026-04-25","in":null,"out":null,"recognized":"00:00:00"},{"id":"0008","name":"이찬기","date":"2026-04-26","in":null,"out":null,"recognized":"00:00:00"},{"id":"0008","name":"이찬기","date":"2026-04-27","in":"06:01","out":"16:03","recognized":"02:59:00"},{"id":"0008","name":"이찬기","date":"2026-04-28","in":"06:01","out":"16:07","recognized":"02:59:00"},{"id":"0008","name":"이찬기","date":"2026-04-29","in":"06:01","out":"16:01","recognized":"02:59:00"},{"id":"0008","name":"이찬기","date":"2026-04-30","in":"06:00","out":"16:04","recognized":"03:00:00"},{"id":"0009","name":"전성남","date":"2026-04-01","in":"06:40","out":"16:05","recognized":"02:20:00"},{"id":"0009","name":"전성남","date":"2026-04-02","in":"06:37","out":"16:06","recognized":"02:23:00"},{"id":"0009","name":"전성남","date":"2026-04-03","in":"06:37","out":"16:07","recognized":"02:23:00"},{"id":"0009","name":"전성남","date":"2026-04-04","in":null,"out":null,"recognized":"00:00:00"},{"id":"0009","name":"전성남","date":"2026-04-05","in":null,"out":null,"recognized":"00:00:00"},{"id":"0009","name":"전성남","date":"2026-04-06","in":"06:40","out":"16:04","recognized":"02:20:00"},{"id":"0009","name":"전성남","date":"2026-04-07","in":"06:40","out":"16:04","recognized":"02:20:00"},{"id":"0009","name":"전성남","date":"2026-04-08","in":"06:40","out":"16:05","recognized":"02:20:00"},{"id":"0009","name":"전성남","date":"2026-04-09","in":"06:37","out":"16:07","recognized":"02:23:00"},{"id":"0009","name":"전성남","date":"2026-04-10","in":"06:41","out":null,"recognized":"02:19:00"},{"id":"0009","name":"전성남","date":"2026-04-11","in":null,"out":null,"recognized":"00:00:00"},{"id":"0009","name":"전성남","date":"2026-04-12","in":null,"out":null,"recognized":"00:00:00"},{"id":"0009","name":"전성남","date":"2026-04-13","in":"06:40","out":"16:05","recognized":"02:20:00"},{"id":"0009","name":"전성남","date":"2026-04-14","in":"06:40","out":"16:07","recognized":"02:20:00"},{"id":"0009","name":"전성남","date":"2026-04-15","in":"06:37","out":"16:06","recognized":"02:23:00"},{"id":"0009","name":"전성남","date":"2026-04-16","in":"06:37","out":"16:03","recognized":"02:23:00"},{"id":"0009","name":"전성남","date":"2026-04-17","in":"06:37","out":"16:03","recognized":"02:23:00"},{"id":"0009","name":"전성남","date":"2026-04-18","in":null,"out":null,"recognized":"00:00:00"},{"id":"0009","name":"전성남","date":"2026-04-19","in":null,"out":null,"recognized":"00:00:00"},{"id":"0009","name":"전성남","date":"2026-04-20","in":"06:37","out":"16:06","recognized":"02:23:00"},{"id":"0009","name":"전성남","date":"2026-04-21","in":"06:37","out":"16:05","recognized":"02:23:00"},{"id":"0009","name":"전성남","date":"2026-04-22","in":"06:40","out":"16:07","recognized":"02:20:00"},{"id":"0009","name":"전성남","date":"2026-04-23","in":"06:37","out":"16:06","recognized":"02:23:00"},{"id":"0009","name":"전성남","date":"2026-04-24","in":"06:40","out":"16:05","recognized":"02:20:00"},{"id":"0009","name":"전성남","date":"2026-04-25","in":null,"out":null,"recognized":"00:00:00"},{"id":"0009","name":"전성남","date":"2026-04-26","in":null,"out":null,"recognized":"00:00:00"},{"id":"0009","name":"전성남","date":"2026-04-27","in":"06:37","out":"16:07","recognized":"02:23:00"},{"id":"0009","name":"전성남","date":"2026-04-28","in":"06:40","out":"16:05","recognized":"02:20:00"},{"id":"0009","name":"전성남","date":"2026-04-29","in":"06:37","out":"16:06","recognized":"02:23:00"},{"id":"0009","name":"전성남","date":"2026-04-30","in":"06:38","out":"16:11","recognized":"02:22:00"},{"id":"0010","name":"정련숙","date":"2026-04-01","in":"06:40","out":"16:04","recognized":"02:20:00"},{"id":"0010","name":"정련숙","date":"2026-04-02","in":"06:37","out":"16:05","recognized":"02:23:00"},{"id":"0010","name":"정련숙","date":"2026-04-03","in":"06:37","out":"16:08","recognized":"02:23:00"},{"id":"0010","name":"정련숙","date":"2026-04-04","in":null,"out":null,"recognized":"00:00:00"},{"id":"0010","name":"정련숙","date":"2026-04-05","in":null,"out":null,"recognized":"00:00:00"},{"id":"0010","name":"정련숙","date":"2026-04-06","in":"06:40","out":"16:05","recognized":"02:20:00"},{"id":"0010","name":"정련숙","date":"2026-04-07","in":"06:40","out":"16:05","recognized":"02:20:00"},{"id":"0010","name":"정련숙","date":"2026-04-08","in":"06:40","out":"16:05","recognized":"02:20:00"},{"id":"0010","name":"정련숙","date":"2026-04-09","in":"06:37","out":"16:08","recognized":"02:23:00"},{"id":"0010","name":"정련숙","date":"2026-04-10","in":"06:41","out":null,"recognized":"02:19:00"},{"id":"0010","name":"정련숙","date":"2026-04-11","in":null,"out":null,"recognized":"00:00:00"},{"id":"0010","name":"정련숙","date":"2026-04-12","in":null,"out":null,"recognized":"00:00:00"},{"id":"0010","name":"정련숙","date":"2026-04-13","in":"06:40","out":"16:06","recognized":"02:20:00"},{"id":"0010","name":"정련숙","date":"2026-04-14","in":"06:40","out":"16:05","recognized":"02:20:00"},{"id":"0010","name":"정련숙","date":"2026-04-15","in":"06:37","out":"16:05","recognized":"02:23:00"},{"id":"0010","name":"정련숙","date":"2026-04-16","in":null,"out":null,"recognized":"00:00:00"},{"id":"0010","name":"정련숙","date":"2026-04-17","in":"06:37","out":"16:07","recognized":"02:23:00"},{"id":"0010","name":"정련숙","date":"2026-04-18","in":null,"out":null,"recognized":"00:00:00"},{"id":"0010","name":"정련숙","date":"2026-04-19","in":null,"out":null,"recognized":"00:00:00"},{"id":"0010","name":"정련숙","date":"2026-04-20","in":"06:37","out":"16:08","recognized":"02:23:00"},{"id":"0010","name":"정련숙","date":"2026-04-21","in":"06:38","out":"16:09","recognized":"02:22:00"},{"id":"0010","name":"정련숙","date":"2026-04-22","in":"06:41","out":"16:05","recognized":"02:19:00"},{"id":"0010","name":"정련숙","date":"2026-04-23","in":"06:37","out":null,"recognized":"02:23:00"},{"id":"0010","name":"정련숙","date":"2026-04-24","in":"06:40","out":"16:06","recognized":"02:20:00"},{"id":"0010","name":"정련숙","date":"2026-04-25","in":null,"out":null,"recognized":"00:00:00"},{"id":"0010","name":"정련숙","date":"2026-04-26","in":null,"out":null,"recognized":"00:00:00"},{"id":"0010","name":"정련숙","date":"2026-04-27","in":"06:37","out":"16:07","recognized":"02:23:00"},{"id":"0010","name":"정련숙","date":"2026-04-28","in":"06:40","out":"16:09","recognized":"02:20:00"},{"id":"0010","name":"정련숙","date":"2026-04-29","in":"06:37","out":"16:10","recognized":"02:23:00"},{"id":"0010","name":"정련숙","date":"2026-04-30","in":"06:37","out":"16:11","recognized":"02:23:00"},{"id":"0011","name":"김무현","date":"2026-04-01","in":"06:46","out":"16:01","recognized":"02:14:00"},{"id":"0011","name":"김무현","date":"2026-04-02","in":"06:57","out":"16:00","recognized":"02:03:00"},{"id":"0011","name":"김무현","date":"2026-04-03","in":"06:58","out":"16:03","recognized":"02:02:00"},{"id":"0011","name":"김무현","date":"2026-04-04","in":null,"out":null,"recognized":"00:00:00"},{"id":"0011","name":"김무현","date":"2026-04-05","in":null,"out":null,"recognized":"00:00:00"},{"id":"0011","name":"김무현","date":"2026-04-06","in":"06:27","out":"16:04","recognized":"02:33:00"},{"id":"0011","name":"김무현","date":"2026-04-07","in":"06:49","out":"16:08","recognized":"02:11:00"},{"id":"0011","name":"김무현","date":"2026-04-08","in":"06:56","out":"16:02","recognized":"02:04:00"},{"id":"0011","name":"김무현","date":"2026-04-09","in":"06:54","out":"16:03","recognized":"02:06:00"},{"id":"0011","name":"김무현","date":"2026-04-10","in":"07:36","out":"16:02","recognized":"01:24:00"},{"id":"0011","name":"김무현","date":"2026-04-11","in":null,"out":null,"recognized":"00:00:00"},{"id":"0011","name":"김무현","date":"2026-04-12","in":null,"out":null,"recognized":"00:00:00"},{"id":"0011","name":"김무현","date":"2026-04-13","in":"06:38","out":"16:04","recognized":"02:22:00"},{"id":"0011","name":"김무현","date":"2026-04-14","in":"06:34","out":"16:06","recognized":"02:26:00"},{"id":"0011","name":"김무현","date":"2026-04-15","in":"06:48","out":"16:01","recognized":"02:12:00"},{"id":"0011","name":"김무현","date":"2026-04-16","in":"06:35","out":"16:03","recognized":"02:25:00"},{"id":"0011","name":"김무현","date":"2026-04-17","in":"06:38","out":"16:01","recognized":"02:22:00"},{"id":"0011","name":"김무현","date":"2026-04-18","in":null,"out":null,"recognized":"00:00:00"},{"id":"0011","name":"김무현","date":"2026-04-19","in":null,"out":null,"recognized":"00:00:00"},{"id":"0011","name":"김무현","date":"2026-04-20","in":"06:51","out":"16:01","recognized":"02:09:00"},{"id":"0011","name":"김무현","date":"2026-04-21","in":"06:48","out":"16:02","recognized":"02:12:00"},{"id":"0011","name":"김무현","date":"2026-04-22","in":"06:40","out":"16:04","recognized":"02:20:00"},{"id":"0011","name":"김무현","date":"2026-04-23","in":"06:54","out":"16:03","recognized":"02:06:00"},{"id":"0011","name":"김무현","date":"2026-04-24","in":"06:45","out":"16:10","recognized":"02:15:00"},{"id":"0011","name":"김무현","date":"2026-04-25","in":null,"out":null,"recognized":"00:00:00"},{"id":"0011","name":"김무현","date":"2026-04-26","in":null,"out":null,"recognized":"00:00:00"},{"id":"0011","name":"김무현","date":"2026-04-27","in":"06:55","out":"16:06","recognized":"02:05:00"},{"id":"0011","name":"김무현","date":"2026-04-28","in":"06:50","out":"16:05","recognized":"02:10:00"},{"id":"0011","name":"김무현","date":"2026-04-29","in":"06:54","out":null,"recognized":"02:06:00"},{"id":"0011","name":"김무현","date":"2026-04-30","in":"06:31","out":"16:02","recognized":"02:29:00"},{"id":"0012","name":"정진영","date":"2026-04-01","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-02","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-03","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-04","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-05","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-06","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-07","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-08","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-09","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-10","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-11","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-12","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-13","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-14","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-15","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-16","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-17","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-18","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-19","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-20","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-21","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-22","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-23","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-24","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-25","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-26","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-27","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-28","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-29","in":null,"out":null,"recognized":"00:00:00"},{"id":"0012","name":"정진영","date":"2026-04-30","in":null,"out":null,"recognized":"00:00:00"},{"id":"0013","name":"전호석","date":"2026-04-01","in":"06:40","out":"16:04","recognized":"02:20:00"},{"id":"0013","name":"전호석","date":"2026-04-02","in":"06:36","out":"16:05","recognized":"02:24:00"},{"id":"0013","name":"전호석","date":"2026-04-03","in":"06:36","out":"16:08","recognized":"02:24:00"},{"id":"0013","name":"전호석","date":"2026-04-04","in":null,"out":null,"recognized":"00:00:00"},{"id":"0013","name":"전호석","date":"2026-04-05","in":null,"out":null,"recognized":"00:00:00"},{"id":"0013","name":"전호석","date":"2026-04-06","in":"06:39","out":"16:05","recognized":"02:21:00"},{"id":"0013","name":"전호석","date":"2026-04-07","in":"06:39","out":"16:04","recognized":"02:21:00"},{"id":"0013","name":"전호석","date":"2026-04-08","in":"06:40","out":"16:04","recognized":"02:20:00"},{"id":"0013","name":"전호석","date":"2026-04-09","in":"06:36","out":"16:07","recognized":"02:24:00"},{"id":"0013","name":"전호석","date":"2026-04-10","in":"06:41","out":null,"recognized":"02:19:00"},{"id":"0013","name":"전호석","date":"2026-04-11","in":null,"out":null,"recognized":"00:00:00"},{"id":"0013","name":"전호석","date":"2026-04-12","in":null,"out":null,"recognized":"00:00:00"},{"id":"0013","name":"전호석","date":"2026-04-13","in":"06:39","out":"16:05","recognized":"02:21:00"},{"id":"0013","name":"전호석","date":"2026-04-14","in":"06:39","out":"16:04","recognized":"02:21:00"},{"id":"0013","name":"전호석","date":"2026-04-15","in":"06:36","out":"16:03","recognized":"02:24:00"},{"id":"0013","name":"전호석","date":"2026-04-16","in":"06:36","out":"16:03","recognized":"02:24:00"},{"id":"0013","name":"전호석","date":"2026-04-17","in":"06:36","out":"16:04","recognized":"02:24:00"},{"id":"0013","name":"전호석","date":"2026-04-18","in":null,"out":null,"recognized":"00:00:00"},{"id":"0013","name":"전호석","date":"2026-04-19","in":null,"out":null,"recognized":"00:00:00"},{"id":"0013","name":"전호석","date":"2026-04-20","in":"06:36","out":"16:04","recognized":"02:24:00"},{"id":"0013","name":"전호석","date":"2026-04-21","in":"06:36","out":"16:06","recognized":"02:24:00"},{"id":"0013","name":"전호석","date":"2026-04-22","in":"06:39","out":"16:05","recognized":"02:21:00"},{"id":"0013","name":"전호석","date":"2026-04-23","in":"06:36","out":"16:05","recognized":"02:24:00"},{"id":"0013","name":"전호석","date":"2026-04-24","in":"06:39","out":"16:03","recognized":"02:21:00"},{"id":"0013","name":"전호석","date":"2026-04-25","in":null,"out":null,"recognized":"00:00:00"},{"id":"0013","name":"전호석","date":"2026-04-26","in":null,"out":null,"recognized":"00:00:00"},{"id":"0013","name":"전호석","date":"2026-04-27","in":"06:36","out":"16:06","recognized":"02:24:00"},{"id":"0013","name":"전호석","date":"2026-04-28","in":"06:39","out":"16:04","recognized":"02:21:00"},{"id":"0013","name":"전호석","date":"2026-04-29","in":"06:37","out":"16:05","recognized":"02:23:00"},{"id":"0013","name":"전호석","date":"2026-04-30","in":"06:36","out":"16:05","recognized":"02:24:00"},{"id":"0014","name":"김종택","date":"2026-04-01","in":"06:04","out":"16:01","recognized":"02:56:00"},{"id":"0014","name":"김종택","date":"2026-04-02","in":"06:01","out":"16:02","recognized":"02:59:00"},{"id":"0014","name":"김종택","date":"2026-04-03","in":"06:02","out":"16:01","recognized":"02:58:00"},{"id":"0014","name":"김종택","date":"2026-04-04","in":null,"out":null,"recognized":"00:00:00"},{"id":"0014","name":"김종택","date":"2026-04-05","in":null,"out":null,"recognized":"00:00:00"},{"id":"0014","name":"김종택","date":"2026-04-06","in":null,"out":null,"recognized":"00:00:00"},{"id":"0014","name":"김종택","date":"2026-04-07","in":"06:02","out":null,"recognized":"02:58:00"},{"id":"0014","name":"김종택","date":"2026-04-08","in":"06:01","out":"16:03","recognized":"02:59:00"},{"id":"0014","name":"김종택","date":"2026-04-09","in":"06:02","out":"16:03","recognized":"02:58:00"},{"id":"0014","name":"김종택","date":"2026-04-10","in":"06:12","out":null,"recognized":"02:48:00"},{"id":"0014","name":"김종택","date":"2026-04-11","in":null,"out":null,"recognized":"00:00:00"},{"id":"0014","name":"김종택","date":"2026-04-12","in":null,"out":null,"recognized":"00:00:00"},{"id":"0014","name":"김종택","date":"2026-04-13","in":"06:02","out":"16:01","recognized":"02:58:00"},{"id":"0014","name":"김종택","date":"2026-04-14","in":"06:00","out":"16:02","recognized":"03:00:00"},{"id":"0014","name":"김종택","date":"2026-04-15","in":"06:01","out":"16:01","recognized":"02:59:00"},{"id":"0014","name":"김종택","date":"2026-04-16","in":"06:01","out":"16:01","recognized":"02:59:00"},{"id":"0014","name":"김종택","date":"2026-04-17","in":"06:01","out":"16:01","recognized":"02:59:00"},{"id":"0014","name":"김종택","date":"2026-04-18","in":null,"out":null,"recognized":"00:00:00"},{"id":"0014","name":"김종택","date":"2026-04-19","in":null,"out":null,"recognized":"00:00:00"},{"id":"0014","name":"김종택","date":"2026-04-20","in":"06:05","out":"16:02","recognized":"02:55:00"},{"id":"0014","name":"김종택","date":"2026-04-21","in":"06:01","out":"16:06","recognized":"02:59:00"},{"id":"0014","name":"김종택","date":"2026-04-22","in":"06:01","out":"16:02","recognized":"02:59:00"},{"id":"0014","name":"김종택","date":"2026-04-23","in":"06:01","out":"16:02","recognized":"02:59:00"},{"id":"0014","name":"김종택","date":"2026-04-24","in":"06:02","out":"16:03","recognized":"02:58:00"},{"id":"0014","name":"김종택","date":"2026-04-25","in":"06:10","out":null,"recognized":"00:00:00"},{"id":"0014","name":"김종택","date":"2026-04-26","in":null,"out":null,"recognized":"00:00:00"},{"id":"0014","name":"김종택","date":"2026-04-27","in":"06:00","out":"16:07","recognized":"03:00:00"},{"id":"0014","name":"김종택","date":"2026-04-28","in":"06:00","out":"16:02","recognized":"03:00:00"},{"id":"0014","name":"김종택","date":"2026-04-29","in":"06:01","out":"16:02","recognized":"02:59:00"},{"id":"0014","name":"김종택","date":"2026-04-30","in":"06:02","out":"16:01","recognized":"02:58:00"}];
+
+// 사업장 정규 근무시간
+const SITE_HOURS = {
+  head: { start: '08:30', end: '17:00', label: '본사' },
+  hwaseong: { start: '07:00', end: '16:00', label: '화성' }
+};
+let currentSite = 'all';
+let attendCurrentRows = [];
+
+function changeSite(site) {
+  currentSite = site;
+  document.querySelectorAll('.site-btn').forEach(b => b.classList.toggle('active', b.dataset.site === site));
+  renderAttend();
+}
+
+function attendDataForSite() {
+  if (currentSite === 'head') return [];
+  return ATTEND_SAMPLE_HWASEONG.map(r => ({ ...r, site: 'hwaseong' }));
+}
+
+function toMin(t) {
+  if (!t) return 0;
+  const [h,m] = t.split(':');
+  return parseInt(h)*60 + parseInt(m);
+}
+
+function classifyRow(row) {
+  const hours = SITE_HOURS[row.site] || SITE_HOURS.hwaseong;
+  if (!row.in && !row.out) return '미출근';
+  if (!row.in || !row.out) return '미찍음';
+  const inMin = toMin(row.in);
+  const outMin = toMin(row.out);
+  if (inMin > toMin(hours.start) + 5) return '지각';
+  if (outMin < toMin(hours.end) - 5) return '조퇴';
+  return '정시출근';
+}
+
+function isWeekday(dateStr) {
+  const w = new Date(dateStr).getDay();
+  return w >= 1 && w <= 5;
+}
+
+function formatKDate(s) {
+  if (!s) return '-';
+  const d = new Date(s);
+  const days = ['일','월','화','수','목','금','토'];
+  return (d.getMonth()+1) + '월 ' + d.getDate() + '일 (' + days[d.getDay()] + ')';
+}
+
+function formatRecognized(s) {
+  if (!s || s === '00:00:00') return '<span style="color:var(--text-muted)">-</span>';
+  const [h,m] = s.split(':');
+  const total = parseInt(h)*60 + parseInt(m);
+  if (total === 0) return '<span style="color:var(--text-muted)">-</span>';
+  return Math.floor(total/60) + 'h ' + (total%60) + 'm';
+}
+
+function setKpis(ontime, late, missing, absent) {
+  document.getElementById('kpi-attend-ontime').innerHTML = ontime + '<span class="kpi-unit">명</span>';
+  document.getElementById('kpi-attend-late').innerHTML = late + '<span class="kpi-unit">건</span>';
+  document.getElementById('kpi-attend-missing').innerHTML = missing + '<span class="kpi-unit">건</span>';
+  document.getElementById('kpi-attend-absent').innerHTML = absent + '<span class="kpi-unit">명</span>';
+  const total = ontime + late + missing + absent;
+  document.getElementById('kpi-attend-ontime-sub').textContent = total > 0 ? '전체 ' + total + '명 중' : '데이터 없음';
+}
+
 function renderAttend() {
-  // KPI 더미 (재직 인원 기반으로 추정값 표시)
-  const totalEmp = (hrData || []).filter(x => {
-    const f = x.fields || {};
-    return (f.재직상태 || f.Status || '재직') === '재직';
-  }).length;
+  const dateInput = document.getElementById('attendDate');
+  if (!dateInput.value) dateInput.value = '2026-04-30';
+  const targetDate = dateInput.value;
+  document.getElementById('attendDateLabel').textContent = formatKDate(targetDate);
 
-  if (totalEmp > 0) {
-    const inCount = Math.max(0, totalEmp - Math.floor(totalEmp * 0.08));
-    const offCount = Math.floor(totalEmp * 0.05);
-    document.getElementById('kpi-attend-in').innerHTML = `${inCount}<span class="kpi-unit">명</span>`;
-    document.getElementById('kpi-attend-in-sub').textContent = `재직 ${totalEmp}명 중`;
-    document.getElementById('kpi-attend-issue').innerHTML = `2<span class="kpi-unit">건</span>`;
-    document.getElementById('kpi-attend-off').innerHTML = `${offCount}<span class="kpi-unit">명</span>`;
-    document.getElementById('kpi-attend-hours').innerHTML = `42.5<span class="kpi-unit">h</span>`;
+  const data = attendDataForSite();
+
+  if (currentSite === 'head') {
+    document.getElementById('attendDataNote').textContent = '⏳ 본사 데이터는 추후 연동 예정';
+    setKpis(0,0,0,0);
+    document.getElementById('correctionBanner').style.display = 'none';
+    document.getElementById('attendTableBody').innerHTML =
+      '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">본사 데이터는 추후 연동 예정입니다</td></tr>';
+    renderChart('attendHourChart', 'bar', ['데이터 없음'], [0], ['#e2e8f0']);
+    renderChart('attendWeekChart', 'bar', ['데이터 없음'], [0], ['#e2e8f0']);
+    return;
+  }
+  document.getElementById('attendDataNote').textContent =
+    '📁 화성 SECOM 샘플 (2026/04) · SharePoint 연동 예정';
+
+  const today = data.filter(r => r.date === targetDate);
+  const classified = today.map(r => ({ ...r, status: classifyRow(r) }));
+  const ontime = classified.filter(r => r.status === '정시출근').length;
+  const late = classified.filter(r => r.status === '지각' || r.status === '조퇴').length;
+  const missing = classified.filter(r => r.status === '미찍음').length;
+  const absent = classified.filter(r => r.status === '미출근').length;
+
+  setKpis(ontime, late, missing, absent);
+
+  const banner = document.getElementById('correctionBanner');
+  if (missing > 0) {
+    banner.style.display = 'block';
+    document.getElementById('correctionCount').textContent = missing;
+  } else {
+    banner.style.display = 'none';
   }
 
-  // 이번주 출/퇴근 차트 (더미)
-  const weekLabels = ['월', '화', '수', '목', '금'];
-  const weekData = [
-    Math.max(0, totalEmp - 3),
-    Math.max(0, totalEmp - 2),
-    Math.max(0, totalEmp - 4),
-    Math.max(0, totalEmp - 1),
-    Math.max(0, totalEmp - 3)
-  ];
-  if (totalEmp > 0) {
-    renderChart('attendWeekChart', 'bar', weekLabels, weekData, ['#0f4c81','#0f4c81','#0f4c81','#0f4c81','#0f4c81']);
+  // 시간대별 출근 분포
+  const hourBuckets = {};
+  classified.forEach(r => {
+    if (!r.in) return;
+    const h = parseInt(r.in.split(':')[0]);
+    hourBuckets[h] = (hourBuckets[h] || 0) + 1;
+  });
+  const hours = Object.keys(hourBuckets).map(Number).sort((a,b)=>a-b);
+  if (hours.length === 0) {
+    renderChart('attendHourChart', 'bar', ['데이터 없음'], [0], ['#e2e8f0']);
+  } else {
+    const labels = hours.map(h => h.toString().padStart(2,'0') + '시');
+    const values = hours.map(h => hourBuckets[h]);
+    renderChart('attendHourChart', 'bar', labels, values, hours.map(()=>'#0f4c81'));
   }
 
-  // 휴가 유형별 사용 차트 (더미)
-  renderChart('leaveTypeChart', 'doughnut',
-    ['연차', '반차', '경조사', '병가', '특별휴가'],
-    [12, 5, 2, 3, 1],
-    ['#0f4c81','#1a6bb5','#00b4d8','#f4a261','#10b981']
-  );
+  // 최근 7일 출근율
+  const target = new Date(targetDate);
+  const weekLabels = [];
+  const weekRates = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(target);
+    d.setDate(d.getDate() - i);
+    const dt = d.toISOString().slice(0,10);
+    if (!isWeekday(dt)) continue;
+    const dayData = data.filter(r => r.date === dt);
+    if (dayData.length === 0) continue;
+    const present = dayData.filter(r => r.in || r.out).length;
+    const rate = Math.round(present / dayData.length * 100);
+    weekLabels.push((d.getMonth()+1) + '/' + d.getDate());
+    weekRates.push(rate);
+  }
+  if (weekLabels.length === 0) {
+    renderChart('attendWeekChart', 'bar', ['데이터 없음'], [0], ['#e2e8f0']);
+  } else {
+    renderChart('attendWeekChart', 'bar', weekLabels, weekRates, weekRates.map(()=>'#1a6bb5'));
+  }
+
+  attendCurrentRows = classified;
+  renderAttendTable();
+}
+
+function renderAttendTable() {
+  const search = (document.getElementById('attendSearch').value || '').toLowerCase();
+  const statusFilter = document.getElementById('attendStatusFilter').value;
+  const filtered = attendCurrentRows.filter(r => {
+    if (search && !r.name.toLowerCase().includes(search)) return false;
+    if (statusFilter && r.status !== statusFilter) return false;
+    return true;
+  });
+  const tbody = document.getElementById('attendTableBody');
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">해당 조건의 데이터가 없습니다</td></tr>';
+    return;
+  }
+  const badgeClass = { '정시출근':'att-ontime', '지각':'att-late', '조퇴':'att-early', '미찍음':'att-missing', '미출근':'att-absent' };
+  tbody.innerHTML = filtered.map((r,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${SITE_HOURS[r.site]?.label || '-'}</td>
+      <td>${r.id}</td>
+      <td>${r.name}</td>
+      <td>${r.in || '<span style="color:var(--text-muted)">-</span>'}</td>
+      <td>${r.out || '<span style="color:var(--text-muted)">-</span>'}</td>
+      <td>${formatRecognized(r.recognized)}</td>
+      <td><span class="att-badge ${badgeClass[r.status]}">${r.status}</span></td>
+    </tr>
+  `).join('');
 }
 
 // ===== UTILS =====
